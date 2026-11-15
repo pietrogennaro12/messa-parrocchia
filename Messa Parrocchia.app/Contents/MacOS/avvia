@@ -1,0 +1,68 @@
+#!/bin/bash
+# Avvio di "Messa Parrocchia" dall'icona.
+# Scrive un diario in ~/Library/Logs/Messa Parrocchia/avvio.log (cartella sempre accessibile)
+# e mostra un avviso con il motivo se qualcosa non va.
+
+CARTELLA_LOG="$HOME/Library/Logs/Messa Parrocchia"
+LOG="$CARTELLA_LOG/avvio.log"
+mkdir -p "$CARTELLA_LOG" 2>/dev/null
+
+scrivi() { printf '%s  %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG" 2>/dev/null; }
+avviso() {
+  osascript -e 'on run argv' \
+            -e 'display dialog (item 1 of argv) buttons {"OK"} default button "OK" with icon caution with title "Messa Parrocchia"' \
+            -e 'end run' "$1" >/dev/null 2>&1
+}
+
+# La cartella del programma e' quella che contiene questa .app
+DIR="$(cd "$(dirname "$0")/../../.." 2>/dev/null && pwd)"
+PY="$DIR/.venv/bin/python"
+scrivi "=== avvio dall'icona ==="
+scrivi "cartella: $DIR | macOS $(sw_vers -productVersion 2>/dev/null) | $(uname -m) | utente: $(id -un)"
+
+if [ ! -x "$PY" ]; then
+  scrivi "ERRORE: non trovo $PY (installazione non fatta, oppure cartella non accessibile)"
+  avviso $'Non riesco ad avviare il programma.\n\nSe non hai ancora fatto l’installazione: nella cartella del programma fai doppio clic su “Installa.command”.\n\nSe l’hai già fatta e il messaggio compare ancora, rifai doppio clic su “Installa.command”. Se non basta, prova a spostare la cartella in “Applicazioni”.'
+  exit 1
+fi
+
+if [ ! -r "$DIR/app.py" ]; then
+  scrivi "ERRORE: non riesco a leggere $DIR/app.py"
+  avviso $'Non riesco a leggere i file del programma.\n\nProva a spostare tutta la cartella del programma in “Applicazioni” e riprova.'
+  exit 1
+fi
+
+if ! "$PY" -c "import sys" >> "$LOG" 2>&1; then
+  scrivi "ERRORE: Python non parte"
+  avviso $'Python non parte in questa cartella.\n\nRifai doppio clic su “Installa.command”. Se non basta, sposta la cartella in “Applicazioni” e ripeti.'
+  exit 1
+fi
+
+cd "$DIR" || { scrivi "ERRORE: non riesco ad entrare in $DIR"; exit 1; }
+export PYTHONUNBUFFERED=1
+
+# Mac con chip Apple (M1, M2...): le app il cui file di avvio e' uno script possono partire in modalita' "Intel"
+# (Rosetta) e il programma ne eredita l'architettura, trovando componenti "arm64" che non riesce a caricare.
+# Per questo lo faccio partire esplicitamente in modo nativo, se il Mac lo permette.
+ARCH=""
+if [ "$(sysctl -n hw.optional.arm64 2>/dev/null)" = "1" ] && arch -arm64 "$PY" -c "import sys" >/dev/null 2>&1; then
+  ARCH="arch -arm64"
+fi
+scrivi "architettura: avvio $(uname -m) | modalità del programma: ${ARCH:-predefinita}"
+
+# Il programma gira "in primo piano" rispetto a questo file: l'app resta aperta finche' il programma e' in funzione.
+inizio=$(date +%s)
+$ARCH "$PY" app.py >> "$LOG" 2>&1
+codice=$?
+durata=$(( $(date +%s) - inizio ))
+scrivi "il programma è terminato: codice $codice dopo $durata secondi"
+
+if [ "$codice" -ne 0 ] && [ "$durata" -lt 30 ]; then
+  if tail -n 60 "$LOG" 2>/dev/null | grep -q "incompatible architecture"; then
+    scrivi "CAUSA: componenti installati per un tipo di Mac diverso da quello in uso"
+    avviso $'I componenti del programma sono stati installati per un tipo di Mac diverso da quello con cui parte.\n\nFai doppio clic su “Avvia con Terminale.command” oppure rifai l’installazione (“Installa.command”).\n\nDettagli nel file:\n'"$LOG"
+  else
+    avviso $'Il programma si è chiuso subito per un errore.\n\nI dettagli sono nel file:\n'"$LOG"
+  fi
+fi
+exit "$codice"

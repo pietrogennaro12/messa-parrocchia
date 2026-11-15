@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messa – Generatore di presentazioni</title>
+<style>
+  :root {
+    --bg:#f4f1ea; --card:#ffffff; --testo:#1f2430; --muto:#6b7280; --linea:#e2ddd2;
+    --accento:#2c4a7c; --accento-h:#233b64; --ok:#2e7d32; --err:#b3261e; --avv:#8a5a00;
+    --err-bg:#fdecea; --avv-bg:#fff4dc; --ok-bg:#e8f5e9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#14171d; --card:#1e232c; --testo:#e8eaee; --muto:#98a0ae; --linea:#323a47;
+            --accento:#6f9bdc; --accento-h:#8cb2ea; --err-bg:#3a1f1d; --avv-bg:#3a2f14; --ok-bg:#1c3320;
+            --ok:#7fd186; --err:#ff8a80; --avv:#f5c76a; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--testo);
+         font:16px/1.45 -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; }
+  header { padding:22px 20px 8px; max-width:900px; margin:0 auto; }
+  header h1 { margin:0; font-size:26px; }
+  header p { margin:2px 0 0; color:var(--muto); }
+  main { max-width:900px; margin:0 auto; padding:8px 20px 60px; }
+  section.card { background:var(--card); border:1px solid var(--linea); border-radius:14px;
+                 padding:18px 20px; margin:14px 0; }
+  section.card h2 { margin:0 0 12px; font-size:18px; }
+  .num { display:inline-block; width:26px; height:26px; line-height:26px; text-align:center;
+         border-radius:50%; background:var(--accento); color:#fff; font-size:14px; margin-right:8px; }
+  label { font-weight:600; }
+  input[type=date], input[type=text], select {
+    font:inherit; padding:8px 10px; border:1px solid var(--linea); border-radius:8px;
+    background:var(--card); color:var(--testo); }
+  input[type=text] { width:100%; }
+  button { font:inherit; font-weight:600; padding:9px 16px; border-radius:9px; border:1px solid var(--accento);
+           background:var(--card); color:var(--accento); cursor:pointer; }
+  button:hover { background:var(--accento); color:#fff; }
+  button:disabled { opacity:.5; cursor:default; background:var(--card); color:var(--accento); }
+  button.primario { background:var(--accento); color:#fff; font-size:18px; padding:13px 26px; }
+  button.primario:hover { background:var(--accento-h); }
+  button.primario:disabled { background:var(--accento); color:#fff; }
+  button.piccolo { padding:5px 11px; font-size:14px; }
+  .riga { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .grow { flex:1; min-width:180px; }
+  .stato-lit { margin-top:12px; padding:10px 14px; border-radius:10px; background:var(--ok-bg); }
+  .stato-lit b { display:block; font-size:17px; }
+  .puntino { display:inline-block; width:12px; height:12px; border-radius:50%; margin-right:6px; vertical-align:-1px; border:1px solid #0004; }
+  .msg { margin:10px 0; padding:11px 14px; border-radius:10px; }
+  .msg.err { background:var(--err-bg); color:var(--err); }
+  .msg.avv { background:var(--avv-bg); color:var(--avv); }
+  .msg.ok { background:var(--ok-bg); color:var(--ok); }
+  .msg .cod { font-weight:700; margin-right:6px; }
+  .msg small { display:block; opacity:.85; margin-top:2px; }
+  .sezioni { list-style:none; margin:0; padding:0; }
+  .sezioni li { display:grid; grid-template-columns:28px 30px minmax(150px,1fr) minmax(200px,1.3fr) 130px;
+                gap:8px; align-items:center; padding:7px 4px; border-bottom:1px solid var(--linea); }
+  .sezioni li:last-child { border-bottom:none; }
+  .sezioni li.spenta .nome { color:var(--muto); text-decoration:line-through; }
+  .sezioni .n { color:var(--muto); font-size:14px; text-align:right; }
+  .sezioni select { width:100%; min-width:0; }
+  .cella { display:flex; gap:8px; }
+  .cella select:first-child:not(:last-child) { flex:0 0 34%; }
+  .stato-lit input.nome { font:inherit; font-weight:700; font-size:17px; width:100%; padding:4px 6px; margin:-4px 0 4px -6px;
+                          border:1px dashed transparent; border-radius:6px; background:transparent; color:inherit; }
+  .stato-lit input.nome:hover, .stato-lit input.nome:focus { border-color:var(--muto); background:var(--card); }
+  .formulario { margin-top:10px; padding:10px 14px; border-radius:10px; background:var(--avv-bg); color:var(--avv); }
+  .formulario select { margin-left:8px; }
+  .extra { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid var(--linea); }
+  .extra select.canto { flex:2 1 220px; min-width:0; }
+  .extra input[type=text] { flex:1 1 160px; width:auto; min-width:0; }
+  .extra .dopo { flex:1.4 1 200px; display:flex; gap:6px; align-items:center; }
+  .extra .dopo select { flex:1; min-width:0; }
+  .velo { position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:center;
+          justify-content:center; z-index:50; padding:16px; }
+  .velo[hidden] { display:none; }
+  .modale { background:var(--card); color:var(--testo); border-radius:14px; padding:20px 22px; width:100%;
+            max-width:540px; max-height:82vh; overflow:auto; box-shadow:0 10px 40px rgba(0,0,0,.35); }
+  .modale h3 { margin:0 0 10px; font-size:19px; }
+  .modale p { margin:6px 0; }
+  .modale .azioni { display:flex; justify-content:flex-end; gap:10px; margin-top:16px; }
+  .titolo-extra { font-size:16px; margin:20px 0 4px; }
+  .nota { color:var(--muto); font-size:14px; margin:6px 0 0; }
+  .badge { font-size:12.5px; color:var(--muto); text-align:right; }
+  input[type=checkbox] { width:20px; height:20px; accent-color:var(--accento); }
+  .azioni-sez { display:flex; gap:8px; margin-bottom:8px; }
+  .archivio { padding:8px 0; border-bottom:1px solid var(--linea); }
+  .archivio:last-child { border-bottom:none; }
+  .archivio .percorso { color:var(--muto); font-size:14px; word-break:break-all; }
+  .ok-t { color:var(--ok); font-weight:600; } .err-t { color:var(--err); font-weight:600; }
+  .genera { text-align:center; padding:8px 0 0; }
+  footer { text-align:center; color:var(--muto); font-size:14px; margin-top:24px; }
+  footer button { margin-top:8px; }
+  .spinner { display:inline-block; width:14px; height:14px; border:2px solid var(--muto); border-top-color:transparent;
+             border-radius:50%; animation:g 0.8s linear infinite; vertical-align:-2px; margin-right:6px; }
+  @keyframes g { to { transform:rotate(360deg); } }
+  @media (max-width:700px) {
+    .sezioni li { grid-template-columns:28px 1fr; }
+    .sezioni .n, .sezioni .badge { display:none; }
+    .sezioni select { grid-column:2; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>⛪ Presentazione della Messa</h1>
+  <p id="parrocchia"></p>
+</header>
+
+<main>
+  <div id="messaggi"></div>
+
+  <!-- A. DATA -->
+  <section class="card">
+    <h2><span class="num">1</span>Data della celebrazione</h2>
+    <div class="riga">
+      <input type="date" id="data">
+      <button id="btnCarica">Carica la liturgia</button>
+    </div>
+    <div id="statoLit"></div>
+  </section>
+
+  <!-- B+C. SEZIONI E CANTI -->
+  <section class="card">
+    <h2><span class="num">2</span>Parti da inserire e canti</h2>
+    <div class="azioni-sez">
+      <button class="piccolo" id="btnTutte">Seleziona tutto</button>
+      <button class="piccolo" id="btnNessuna">Deseleziona tutto</button>
+    </div>
+    <ul class="sezioni" id="elencoSezioni"></ul>
+    <p class="nota">
+      L’ordine delle slide è sempre quello della lista, qualunque sia l’ordine in cui spunti le voci.</p>
+
+    <h3 class="titolo-extra">Canti aggiuntivi</h3>
+    <div id="elencoExtra"></div>
+    <button class="piccolo" id="btnExtra" style="margin-top:8px">＋ Aggiungi un canto</button>
+    <p class="nota">Ogni canto aggiuntivo viene inserito subito dopo la parte che scegli (anche una parte non spuntata).</p>
+  </section>
+
+  <!-- D. ARCHIVI -->
+  <section class="card">
+    <h2><span class="num">3</span>Archivi PDF</h2>
+    <div class="archivio" id="archivioCanti"></div>
+    <div class="archivio" id="archivioPreghiere"></div>
+  </section>
+
+  <!-- F. SALVATAGGIO + E. GENERA -->
+  <section class="card">
+    <h2><span class="num">4</span>Salvataggio</h2>
+    <div class="riga" style="margin-bottom:10px">
+      <label for="cartella" style="min-width:90px">Cartella</label>
+      <input type="text" id="cartella" class="grow">
+      <button class="piccolo" id="btnCartella">Scegli…</button>
+    </div>
+    <div class="riga">
+      <label for="nomeFile" style="min-width:90px">Nome file</label>
+      <input type="text" id="nomeFile" class="grow">
+    </div>
+    <div class="genera"><br>
+      <button class="primario" id="btnGenera">Crea il PowerPoint</button>
+    </div>
+    <div id="risultato"></div>
+  </section>
+</main>
+
+<div class="velo" id="velo" hidden>
+  <div class="modale" role="dialog" aria-modal="true" aria-labelledby="modaleTitolo">
+    <h3 id="modaleTitolo"></h3>
+    <div id="modaleCorpo"></div>
+    <div class="azioni">
+      <button id="modaleAnnulla">Annulla</button>
+      <button id="modaleOk" class="primario piccolo">OK</button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <span id="testoFooter">Puoi chiudere questa scheda quando hai finito.</span><br>
+  <span id="versione" style="font-size:13px"></span><br>
+  <button class="piccolo" id="btnEsci">Chiudi il programma</button>
+</footer>
+
+<script>
+const TOKEN = "{{TOKEN}}";
+let S = null;                    // stato inviato dal programma
+let LIT = null;                  // liturgia caricata
+let nomeModificato = false;
+let formularioSel = 0;           // quale messa (formulario) usare, se il sito ne propone più di una
+const el = id => document.getElementById(id);
+
+async function api(path, dati) {
+  const r = await fetch(path, { method: "POST",
+    headers: { "Content-Type": "application/json", "X-Token": TOKEN },
+    body: JSON.stringify(dati || {}) });
+  return r.json();
+}
+
+/* ---------- finestra di conferma (al posto di confirm(), che nelle finestre incorporate può non funzionare) ---------- */
+function chiedi(titolo, righe, ok, annulla) {
+  return new Promise(risolvi => {
+    el("modaleTitolo").textContent = titolo;
+    const corpo = el("modaleCorpo"); corpo.innerHTML = "";
+    righe.forEach(r => { const p = document.createElement("p"); p.textContent = r; corpo.appendChild(p); });
+    el("modaleOk").textContent = ok; el("modaleAnnulla").textContent = annulla;
+    const velo = el("velo"); velo.hidden = false;
+    const tasto = e => { if (e.key === "Escape") chiudi(false); };
+    const chiudi = valore => {
+      velo.hidden = true; document.removeEventListener("keydown", tasto);
+      el("modaleOk").onclick = el("modaleAnnulla").onclick = null; risolvi(valore);
+    };
+    document.addEventListener("keydown", tasto);
+    el("modaleOk").onclick = () => chiudi(true); el("modaleAnnulla").onclick = () => chiudi(false);
+    el("modaleOk").focus();
+  });
+}
+
+/* ---------- messaggi ---------- */
+function messaggio(tipo, testo, codice, dettaglio, dove) {
+  const d = document.createElement("div");
+  d.className = "msg " + tipo;
+  if (codice) { const c = document.createElement("span"); c.className = "cod"; c.textContent = codice; d.appendChild(c); }
+  d.appendChild(document.createTextNode(testo));
+  if (dettaglio) { const s = document.createElement("small"); s.textContent = dettaglio; d.appendChild(s); }
+  (dove || el("messaggi")).appendChild(d);
+  return d;
+}
+function mostraErrore(e, dove) { messaggio("err", e.messaggio, e.codice, e.dettaglio, dove); }
+function pulisciMessaggi() { el("messaggi").innerHTML = ""; el("risultato").innerHTML = ""; }
+
+/* ---------- avvio ---------- */
+async function avvia() {
+  const r = await api("/api/stato");
+  if (!r.ok) { mostraErrore(r.errore); return; }
+  S = r;
+  el("versione").textContent = "Messa Parrocchia – versione " + S.versione;
+  if (S.finestra) el("testoFooter").textContent = "Puoi chiudere la finestra quando hai finito.";
+  el("parrocchia").textContent = S.parrocchia;
+  el("data").value = S.data_predefinita;
+  el("cartella").value = S.cartella_output;
+  costruisciSezioni();
+  disegnaArchivi();
+  aggiornaNomeFile();
+  caricaLiturgia();
+  setInterval(() => api("/api/ping"), 10000);
+}
+
+/* ---------- sezioni e canti ---------- */
+function costruisciSezioni() {
+  const ul = el("elencoSezioni"); ul.innerHTML = "";
+  S.sezioni.forEach((s, i) => {
+    const li = document.createElement("li"); li.id = "riga_" + s.id;
+    const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = true; cb.id = "cb_" + s.id;
+    cb.addEventListener("change", () => aggiornaRiga(s.id));
+    const n = document.createElement("span"); n.className = "n"; n.textContent = (i + 1) + ".";
+    const nome = document.createElement("label"); nome.className = "nome"; nome.htmlFor = cb.id; nome.textContent = s.nome;
+    li.append(cb, n, nome);
+    const cella = document.createElement("div"); cella.className = "cella";
+    if (s.varianti.length) {                                   // sezione con scelta (es. Gloria, Credo)
+      const v = document.createElement("select"); v.id = "var_" + s.id;
+      s.varianti.forEach(x => { const o = document.createElement("option"); o.value = x.id; o.textContent = x.etichetta; v.appendChild(o); });
+      v.addEventListener("change", () => aggiornaRiga(s.id));
+      cella.appendChild(v);
+      const conCanto = s.varianti.find(x => x.tipo === "canto");
+      if (conCanto) {
+        const sel = document.createElement("select"); sel.id = "sel_" + conCanto.slot;
+        riempiSelect(sel, S.canti_predefiniti[conCanto.slot]); cella.appendChild(sel);
+      }
+    } else if (s.fonte === "canto") {
+      const sel = document.createElement("select"); sel.id = "sel_" + s.slot;
+      riempiSelect(sel, S.canti_predefiniti[s.slot]); cella.appendChild(sel);
+    }
+    li.appendChild(cella);
+    const b = document.createElement("span"); b.className = "badge"; b.id = "badge_" + s.id;
+    li.appendChild(b);
+    ul.appendChild(li);
+    aggiornaRiga(s.id);
+  });
+}
+function etichetta(s) {
+  return { sistema: "automatico", cei: "dal sito CEI", canto: "da PDF canti", preghiere: "da PDF preghiere",
+           fisso: "testo fisso" }[s.fonte];
+}
+function varianteScelta(s) {
+  const v = el("var_" + s.id);
+  return v ? s.varianti.find(x => x.id === v.value) : null;
+}
+function riempiSelect(sel, predefinito) {
+  sel.innerHTML = "";
+  const o0 = document.createElement("option"); o0.value = ""; o0.textContent = "— scegli un canto —"; sel.appendChild(o0);
+  [...S.canti].sort((a, b) => a.titolo.localeCompare(b.titolo, "it")).forEach(c => {
+    const o = document.createElement("option"); o.value = c.id; o.textContent = c.titolo; sel.appendChild(o);
+  });
+  if (predefinito) sel.value = predefinito;
+  if (!S.canti.length) { sel.disabled = true; o0.textContent = "archivio canti non disponibile"; }
+}
+function aggiornaRiga(id) {
+  const s = S.sezioni.find(x => x.id === id);
+  const cb = el("cb_" + id), li = el("riga_" + id), badge = el("badge_" + id);
+  li.classList.toggle("spenta", !cb.checked);
+  if (s.varianti.length) {
+    const v = varianteScelta(s);
+    const conCanto = s.varianti.find(x => x.tipo === "canto");
+    el("var_" + id).disabled = !cb.checked;
+    if (conCanto) {
+      const sel = el("sel_" + conCanto.slot);
+      sel.style.display = v.tipo === "canto" ? "" : "none";
+      sel.disabled = !cb.checked || !S.canti.length;
+    }
+    badge.textContent = { canto: "da PDF canti", testo: "testo fisso", frontespizio: "frontespizio" }[v.tipo];
+  } else {
+    if (s.slot) el("sel_" + s.slot).disabled = !cb.checked || !S.canti.length;
+    if (s.fonte !== "cei") badge.textContent = s.nota || etichetta(s);
+  }
+}
+function applicaDisponibilita() {
+  S.sezioni.filter(s => s.fonte === "cei").forEach(s => {
+    const cb = el("cb_" + s.id), badge = el("badge_" + s.id);
+    const ok = LIT && LIT.disponibili.includes(s.id);
+    if (!LIT) { cb.disabled = false; badge.textContent = etichetta(s); }
+    else if (ok) { cb.disabled = false; cb.checked = true; badge.textContent = "dal sito CEI ✓"; }
+    else { cb.checked = false; cb.disabled = true; badge.textContent = "non prevista"; }
+    aggiornaRiga(s.id);
+  });
+}
+el("btnTutte").onclick = () => S.sezioni.forEach(s => { const cb = el("cb_" + s.id); if (!cb.disabled) { cb.checked = true; aggiornaRiga(s.id); } });
+el("btnNessuna").onclick = () => S.sezioni.forEach(s => { const cb = el("cb_" + s.id); cb.checked = false; aggiornaRiga(s.id); });
+
+/* ---------- canti aggiuntivi ---------- */
+function aggiungiExtra() {
+  const r = document.createElement("div"); r.className = "extra";
+  const sel = document.createElement("select"); sel.className = "canto"; riempiSelect(sel, null);
+  const nome = document.createElement("input"); nome.type = "text"; nome.placeholder = "Nome (facoltativo, es. Canto alla Madonna)";
+  const dopo = document.createElement("div"); dopo.className = "dopo";
+  const t = document.createElement("span"); t.textContent = "dopo:";
+  const pos = document.createElement("select");
+  S.sezioni.forEach(s => { const o = document.createElement("option"); o.value = s.id; o.textContent = s.nome; pos.appendChild(o); });
+  pos.value = "canto_comunione";
+  dopo.append(t, pos);
+  const x = document.createElement("button"); x.className = "piccolo"; x.textContent = "✕"; x.title = "Togli questo canto";
+  x.onclick = () => r.remove();
+  r.append(sel, nome, dopo, x);
+  el("elencoExtra").appendChild(r);
+}
+el("btnExtra").onclick = () => { if (S && S.canti.length) aggiungiExtra(); };
+
+/* ---------- liturgia ---------- */
+let contatore = 0;
+async function caricaLiturgia() {
+  const mio = ++contatore, box = el("statoLit");
+  box.innerHTML = ""; pulisciMessaggi(); LIT = null; formularioSel = 0; applicaDisponibilita();
+  const attesa = document.createElement("div"); attesa.className = "stato-lit";
+  const sp = document.createElement("span"); sp.className = "spinner";
+  attesa.append(sp, document.createTextNode("Sto cercando la liturgia sul sito della CEI…")); box.appendChild(attesa);
+  let r;
+  try { r = await api("/api/liturgia", { data: el("data").value }); }
+  catch (e) { r = { ok: false, errore: { codice: "E01", messaggio: "Il programma non risponde.", dettaglio: "" } }; }
+  if (mio !== contatore) return;
+  box.innerHTML = "";
+  if (!r.ok) { mostraErrore(r.errore, box); applicaDisponibilita(); return; }
+  LIT = r;
+  const d = document.createElement("div"); d.className = "stato-lit";
+  const t = document.createElement("input"); t.type = "text"; t.className = "nome"; t.id = "nomeCelebrazione";
+  t.value = r.nome || ""; t.placeholder = "Nome della celebrazione (scrivilo qui)"; t.title = "Puoi correggere il nome: comparirà sul frontespizio";
+  const c = document.createElement("span"); c.className = "puntino"; c.style.background = "#" + r.colore_hex;
+  d.append(t, c, document.createTextNode("colore liturgico: " + r.colore));
+  box.appendChild(d);
+  r.avvisi.forEach(a => messaggio("avv", a, null, null, box));
+  if (r.formulari.length > 1) {                       // più messe nello stesso giorno: scelta del formulario
+    const f = document.createElement("div"); f.className = "formulario";
+    const l = document.createElement("label"); l.htmlFor = "selFormulario";
+    l.textContent = "Questa celebrazione ha più messe. Quale vuoi usare?";
+    const sel = document.createElement("select"); sel.id = "selFormulario";
+    r.formulari.forEach((x, i) => { const o = document.createElement("option"); o.value = i; o.textContent = x.etichetta; sel.appendChild(o); });
+    sel.addEventListener("change", () => {
+      formularioSel = parseInt(sel.value, 10);
+      LIT.disponibili = r.formulari[formularioSel].disponibili;
+      applicaDisponibilita();
+    });
+    f.append(l, sel); box.appendChild(f);
+  }
+  applicaDisponibilita();
+}
+el("btnCarica").onclick = caricaLiturgia;
+el("data").addEventListener("change", () => { aggiornaNomeFile(); caricaLiturgia(); });
+
+/* ---------- archivi ---------- */
+function disegnaArchivi() {
+  const a = S.archivi;
+  const c = el("archivioCanti"); c.innerHTML = "";
+  const t = document.createElement("div"); t.innerHTML = "<b>Canti</b> &nbsp;";
+  const st = document.createElement("span");
+  if (a.canti.ok) { st.className = "ok-t"; st.textContent = "✔ " + a.canti.numero + " canti letti"; }
+  else { st.className = "err-t"; st.textContent = "✖ " + a.canti.errore.codice + " – " + a.canti.errore.messaggio; }
+  t.appendChild(st);
+  const p = document.createElement("div"); p.className = "percorso"; p.textContent = a.canti.percorso;
+  const b = document.createElement("button"); b.className = "piccolo"; b.textContent = "Cambia file…";
+  b.onclick = () => cambiaArchivio("canti");
+  c.append(t, p, b);
+  if (!a.canti.ok && a.canti.errore.dettaglio) { const x = document.createElement("div"); x.className = "percorso"; x.textContent = a.canti.errore.dettaglio; c.appendChild(x); }
+
+  const q = el("archivioPreghiere"); q.innerHTML = "";
+  const t2 = document.createElement("div"); t2.innerHTML = "<b>Preghiere dei fedeli</b> &nbsp;";
+  const st2 = document.createElement("span");
+  if (a.preghiere.ok) { st2.className = "ok-t"; st2.textContent = "✔ PDF letto"; }
+  else { st2.className = "err-t"; st2.textContent = "✖ " + a.preghiere.errore.codice + " – " + a.preghiere.errore.messaggio; }
+  t2.appendChild(st2);
+  const p2 = document.createElement("div"); p2.className = "percorso"; p2.textContent = a.preghiere.percorso;
+  const riga = document.createElement("div"); riga.className = "riga"; riga.style.marginTop = "6px";
+  const b2 = document.createElement("button"); b2.className = "piccolo"; b2.textContent = "Cambia file…";
+  b2.onclick = () => cambiaArchivio("preghiere");
+  const lp = document.createElement("span"); lp.textContent = "Pagine da usare (vuoto = tutte):";
+  const ip = document.createElement("input"); ip.type = "text"; ip.style.width = "90px"; ip.placeholder = "es. 3-4"; ip.value = a.preghiere.pagine || "";
+  const b3 = document.createElement("button"); b3.className = "piccolo"; b3.textContent = "Applica";
+  b3.onclick = async () => { const r = await api("/api/archivio", { tipo: "preghiere", pagine: ip.value }); if (r.ok) { S.archivi = r.archivi; disegnaArchivi(); } };
+  riga.append(b2, lp, ip, b3);
+  q.append(t2, p2, riga);
+  if (!a.preghiere.ok && a.preghiere.errore.dettaglio) { const x = document.createElement("div"); x.className = "percorso"; x.textContent = a.preghiere.errore.dettaglio; q.appendChild(x); }
+}
+async function cambiaArchivio(tipo) {
+  const s = await api("/api/sfoglia", { tipo: "pdf" });
+  if (!s.ok || !s.percorso) return;
+  const r = await api("/api/archivio", { tipo, percorso: s.percorso });
+  if (!r.ok) { mostraErrore(r.errore); return; }
+  const nuovo = await api("/api/stato");
+  if (nuovo.ok) { S = nuovo; el("elencoExtra").innerHTML = ""; costruisciSezioni(); disegnaArchivi(); applicaDisponibilita(); }
+}
+
+/* ---------- salvataggio e generazione ---------- */
+function aggiornaNomeFile() { if (!nomeModificato) el("nomeFile").value = "Messa_" + el("data").value; }
+el("nomeFile").addEventListener("input", () => nomeModificato = true);
+el("btnCartella").onclick = async () => { const s = await api("/api/sfoglia", { tipo: "cartella" }); if (s.ok && s.percorso) el("cartella").value = s.percorso; };
+
+function raccogli(extra) {
+  const sezioni = [], canti = {}, varianti = {};
+  S.sezioni.forEach(s => {
+    if (!el("cb_" + s.id).checked) return;
+    sezioni.push(s.id);
+    if (s.varianti.length) {
+      const v = varianteScelta(s);
+      varianti[s.id] = v.id;
+      if (v.tipo === "canto") canti[v.slot] = el("sel_" + v.slot).value || null;
+    } else if (s.slot) canti[s.slot] = el("sel_" + s.slot).value || null;
+  });
+  const canti_extra = [...document.querySelectorAll("#elencoExtra .extra")].map(r => ({
+    id: r.querySelector("select.canto").value || null,
+    etichetta: r.querySelector("input[type=text]").value.trim(),
+    dopo: r.querySelector(".dopo select").value }));
+  const nomeCel = el("nomeCelebrazione") ? el("nomeCelebrazione").value.trim() : "";
+  return Object.assign({ data: el("data").value, sezioni, canti, varianti, canti_extra, formulario: formularioSel,
+                         nome_celebrazione: nomeCel,
+                         cartella: el("cartella").value, nome_file: el("nomeFile").value }, extra || {});
+}
+async function genera(extra) {
+  const bt = el("btnGenera"); bt.disabled = true; bt.textContent = "Sto creando la presentazione…";
+  el("risultato").innerHTML = "";
+  let r;
+  try { r = await api("/api/genera", raccogli(extra)); }
+  catch (e) { r = { ok: false, errore: { codice: "E08", messaggio: "Il programma non risponde.", dettaglio: "" } }; }
+  bt.disabled = false; bt.textContent = "Crea il PowerPoint";
+  const out = el("risultato");
+  if (!r.ok) { mostraErrore(r.errore, out); return; }
+
+  if (r.richiede_conferma) {
+    const righe = r.avvisi.filter(a => a.codice !== "INFO")
+      .map(a => "• " + a.sezione + ": " + a.messaggio + (a.dettaglio ? " (" + a.dettaglio + ")" : ""));
+    const vai = await chiedi("Attenzione", [...righe, "Per queste parti verrà inserita una slide con il solo titolo."],
+                             "Crea comunque", "Annulla");
+    if (vai) return genera(Object.assign({}, extra, { conferma: true }));
+    return;
+  }
+  if (r.esiste) {
+    const vai = await chiedi("Il file esiste già", [r.file, "Vuoi sostituirlo?"], "Sostituisci", "Annulla");
+    if (vai) return genera(Object.assign({}, extra, { sovrascrivi: true, conferma: true }));
+    return;
+  }
+  const creato = messaggio("ok", "Presentazione creata: " + r.slide + " slide.", null, r.file, out);
+  const b = document.createElement("button"); b.className = "piccolo"; b.style.marginTop = "8px";
+  b.textContent = "Mostra in " + (S.gestore_file || "Finder"); b.onclick = () => api("/api/rivela", { file: r.file });
+  creato.appendChild(b);
+  (r.avvisi || []).filter(a => a.codice === "INFO").forEach(a => messaggio("avv", a.messaggio, null, null, out));
+}
+el("btnGenera").onclick = () => genera({});
+
+el("btnEsci").onclick = async () => {
+  await api("/api/esci");
+  document.body.innerHTML = "<p style='text-align:center;margin-top:80px;font-size:20px'>Programma chiuso. Puoi chiudere questa scheda.</p>";
+};
+
+avvia();
+</script>
+</body>
+</html>

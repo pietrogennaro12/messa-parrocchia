@@ -1,0 +1,17 @@
+# ---- Dati personali e file generati: NON vanno mai su GitHub ----
+archivi/*.pdf
+config.json
+log.txt
+cache/
+*.indice.json
+*.pptx
+Messe/
+
+# ---- Ambiente creato da "Installa" (si rifa' da solo su ogni computer) ----
+.venv/
+__pycache__/
+*.pyc
+
+# ---- File di sistema ----
+.DS_Store
+Thumbs.db

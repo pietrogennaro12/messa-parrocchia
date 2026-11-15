@@ -1,0 +1,9 @@
+Testi fissi della Messa
+
+Ogni file .txt è un testo che il programma inserisce nelle slide (Gloria, Credo, Confesso, ...).
+Puoi aprirli con "TextEdit" (formato: solo testo) e correggerli quando vuoi.
+
+  - Una riga = una riga della slide.
+  - Una riga VUOTA separa due "strofe": una strofa non viene mai divisa tra due slide.
+  - Le righe che iniziano con # sono commenti (non appaiono).
+  - Una riga scritta tra **doppi asterischi** compare in grassetto (risposte dell'assemblea).

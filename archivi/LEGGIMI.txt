@@ -1,0 +1,6 @@
+Cartella degli archivi PDF
+
+  canti.pdf              -> il PDF con i testi dei canti (già presente)
+  preghiere_fedeli.pdf   -> il PDF con le preghiere dei fedeli (da aggiungere)
+
+Per usare file con altri nomi o in altre cartelle: nel programma, sezione "Archivi PDF", premi "Cambia file…".

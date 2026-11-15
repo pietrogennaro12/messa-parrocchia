@@ -1,0 +1,3 @@
+# Facoltativo: permette di aprire il programma in una finestra propria (senza browser).
+# Se non si installa, il programma si apre comunque (in una finestra di Edge/Chrome o nel browser).
+pywebview>=5.0
