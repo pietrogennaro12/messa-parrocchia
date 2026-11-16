@@ -1066,6 +1066,8 @@ class TestVersioni(unittest.TestCase):
         import subprocess
         if not shutil.which("git"):
             self.skipTest("git non installato")
+        if not (self.RADICE / "strumenti").exists():
+            self.skipTest("pacchetto di installazione: questa verifica vale per il repository")
         d = Path(tempfile.mkdtemp()) / "copia"
         shutil.copytree(self.RADICE, d, ignore=shutil.ignore_patterns(".git"))
         # file che sul computer di chi usa il programma esistono davvero:

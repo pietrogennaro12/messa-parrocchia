@@ -12,6 +12,8 @@ PREDEFINITA = {
     "pdf_preghiere": "archivi/preghiere_fedeli.pdf",
     "pagine_preghiere": "",            # es. "3-4"; vuoto = tutto il PDF
     "cartella_output": "~/Documents/Messe",
+    "repository_aggiornamenti": "",     # indirizzo GitHub degli aggiornamenti, nella forma utente/nome
+    "controllo_automatico": True,      # controlla se c'e' una versione nuova all'avvio
     "font": "Aptos",                   # se non c'e': "Calibri" o "Arial"
     # canti proposti all'avvio (titolo esatto come nel PDF); chiave = nome della select
     "canti_predefiniti": {"agnello": "AGNELLO DI DIO"},

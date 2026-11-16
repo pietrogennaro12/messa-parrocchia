@@ -61,6 +61,33 @@ Se la finestra nativa non c'era e vuoi averla (per esempio hai installato una ve
 doppio clic su `Installa.command` (Mac) o `Installa.bat` (Windows): non cancella nulla di tuo.
 Per forzare il browser: `python app.py --browser`.
 
+## Aggiornare il programma
+
+In fondo alla pagina c'è il pulsante **Aggiorna versione**. Il programma controlla su GitHub se esiste una versione più
+nuova; se sì, mostra le novità e, con "Aggiorna ora", scarica l'aggiornamento, ne verifica l'integrità, conserva una
+copia di sicurezza, sostituisce i file e si riavvia da solo.
+
+- **Non vengono mai toccati**: i PDF in `archivi/`, le impostazioni (`config.json`), la cartella `.venv`, il diario e i
+  **testi già presenti** in `testi/` (potresti averli modificati; gli aggiornamenti aggiungono solo testi nuovi).
+- **Avviso automatico**: all'avvio, se c'è una versione nuova, compare un avviso in alto (senza Internet non dice nulla).
+  Si può disattivare con `"controllo_automatico": false` in `config.json`.
+- **Torna alla versione precedente**: dopo un aggiornamento compare questo pulsante; riporta il programma com'era.
+- **Prima volta**: se l'indirizzo del repository non è ancora impostato, il programma lo chiede (forma `utente/nome`)
+  e lo ricorda. Per darlo già pronto a tutti, scrivilo in `messa/config.py`, alla voce `repository_aggiornamenti`.
+
+## Per chi pubblica le versioni
+
+1. Cambia il numero in `messa/__init__.py` (es. `1.2.0`) e scrivi le novità in `CHANGELOG.md`.
+2. Esegui `python3 strumenti/crea_pacchetti.py`: crea in `dist/` i pacchetti `Messa_Parrocchia_<versione>_Mac.zip` e
+   `..._Windows.zip` (senza il PDF dei canti) e `SHA256SUMS.txt`. Con `--con-canti` prepara anche i pacchetti
+   **privati** per l'installazione iniziale (`..._con_canti.zip`): non vanno mai pubblicati.
+3. Su GitHub: carica il codice (GitHub Desktop: *Commit* e *Push*), poi *Releases → Create a new release*, tag `v1.2.0`,
+   nelle note scrivi le novità (le vedranno gli utenti) e allega i **due zip pubblici**. Il nome deve contenere
+   `Mac` o `Windows`. Il repository deve essere pubblico.
+4. Gli utenti vedranno l'avviso al successivo avvio, o premendo **Aggiorna versione**.
+
+Nota: chi ha ancora la 1.0.0 deve installare a mano la 1.1.0 una volta; da lì in poi basta il pulsante.
+
 ## Uso
 
 1. Scegli la **data** (all'apertura propone la prossima domenica): la liturgia viene caricata da sola.

@@ -6,6 +6,9 @@ cache/
 *.indice.json
 *.pptx
 Messe/
+backup/
+dist/
+manifest.json
 
 # ---- Ambiente creato da "Installa" (si rifa' da solo su ogni computer) ----
 .venv/

@@ -11,6 +11,8 @@ MESSAGGI = {
     "E07": "Canto non selezionato.",
     "E08": "Errore durante la creazione del file PowerPoint.",
     "E09": "Il file con il testo fisso non è stato trovato o è vuoto (cartella testi).",
+    "E10": "Non riesco a controllare gli aggiornamenti.",
+    "E11": "L'aggiornamento non è andato a buon fine: il programma è rimasto com'era.",
     "E99": "Errore imprevisto.",
 }
 

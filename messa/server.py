@@ -13,6 +13,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from . import __version__
+from . import aggiornamenti
 from . import config as cfgmod
 from . import dialoghi
 from .canti import ArchivioCanti
@@ -107,6 +108,7 @@ class Servizio:
             "gestore_file": dialoghi.gestore_file(),
             "finestra": self.modalita == "finestra",
             "versione": __version__,
+            "aggiornamenti": self.stato_aggiornamenti(),
             "data_predefinita": prossima_domenica().isoformat(),
             "canti_predefiniti": predefiniti,
         }
@@ -123,6 +125,40 @@ class Servizio:
                 self.cfg["pagine_preghiere"] = pagine.strip()
         cfgmod.salva(self.cfg)
         return self.stato_archivi()
+
+    # --- aggiornamenti --------------------------------------------------------
+    def _api(self):
+        return self.cfg.get("api_aggiornamenti") or aggiornamenti.API_GITHUB      # (cambia solo nelle prove)
+
+    def stato_aggiornamenti(self):
+        meta = aggiornamenti.leggi_meta()
+        return {"repository": self.cfg.get("repository_aggiornamenti", ""),
+                "automatico": bool(self.cfg.get("controllo_automatico", True)),
+                "ripristino": meta["versione_precedente"] if meta else None}
+
+    def imposta_aggiornamenti(self, repository=None, automatico=None):
+        if repository is not None:
+            repository = repository.strip().replace("https://github.com/", "").strip("/")
+            if repository.endswith(".git"):
+                repository = repository[:-4]
+            if not aggiornamenti.REPOSITORY.match(repository):
+                raise ErroreMessa("E10", "Indirizzo non valido: scrivi utente/nome (per esempio parrocchia/messa-parrocchia).")
+            self.cfg["repository_aggiornamenti"] = repository
+        if automatico is not None:
+            self.cfg["controllo_automatico"] = bool(automatico)
+        cfgmod.salva(self.cfg)
+        return self.stato_aggiornamenti()
+
+    def controlla_aggiornamenti(self):
+        return aggiornamenti.controlla(self.cfg.get("repository_aggiornamenti"), api_base=self._api())
+
+    def installa_aggiornamento(self):
+        r = aggiornamenti.installa(self.cfg.get("repository_aggiornamenti"), api_base=self._api())
+        self.liturgie.clear()
+        return r
+
+    def ripristina_versione(self):
+        return {"versione": aggiornamenti.ripristina_precedente()}
 
     # --- liturgia -----------------------------------------------------------
     @staticmethod
@@ -250,6 +286,17 @@ def crea_handler(servizio: Servizio):
                 return s.genera(d)
             if path == "/api/rivela":
                 dialoghi.mostra_nel_finder(d.get("file", ""))
+                return {}
+            if path == "/api/aggiornamenti/controlla":
+                return s.controlla_aggiornamenti()
+            if path == "/api/aggiornamenti/installa":
+                return s.installa_aggiornamento()
+            if path == "/api/aggiornamenti/ripristina":
+                return s.ripristina_versione()
+            if path == "/api/aggiornamenti/impostazioni":
+                return s.imposta_aggiornamenti(d.get("repository"), d.get("automatico"))
+            if path == "/api/riavvia":
+                aggiornamenti.riavvia()
                 return {}
             if path == "/api/esci":
                 import threading

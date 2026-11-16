@@ -3,6 +3,14 @@
 Il numero di versione ha tre cifre: **maggiore.minore.correzione** (es. 1.2.0).
 Ogni versione pubblicata su GitHub ha il suo "tag" `v1.2.0`.
 
+## 1.1.0 — aggiornamento dal programma
+
+- Pulsante **Aggiorna versione**: controlla su GitHub se c'è una versione più nuova, la scarica, la verifica, ne conserva
+  una copia di sicurezza e si riavvia. Non tocca PDF, impostazioni e testi già presenti.
+- Avviso automatico all'avvio quando è disponibile una versione nuova (si può disattivare).
+- **Torna alla versione precedente**, se un aggiornamento non convince.
+- Strumento per preparare i pacchetti di ogni versione (`strumenti/crea_pacchetti.py`).
+
 ## 1.0.0 — prima versione stabile
 
 - Presentazione della Messa creata dal sito della CEI: colletta, letture (con slide di annuncio), salmo con ritornello,

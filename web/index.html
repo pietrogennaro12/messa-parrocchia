@@ -107,6 +107,7 @@
 </header>
 
 <main>
+  <div id="bannerAgg"></div>
   <div id="messaggi"></div>
 
   <!-- A. DATA -->
@@ -166,6 +167,7 @@
   <div class="modale" role="dialog" aria-modal="true" aria-labelledby="modaleTitolo">
     <h3 id="modaleTitolo"></h3>
     <div id="modaleCorpo"></div>
+    <input type="text" id="modaleCampo" hidden style="width:100%;margin-top:8px">
     <div class="azioni">
       <button id="modaleAnnulla">Annulla</button>
       <button id="modaleOk" class="primario piccolo">OK</button>
@@ -176,6 +178,8 @@
 <footer>
   <span id="testoFooter">Puoi chiudere questa scheda quando hai finito.</span><br>
   <span id="versione" style="font-size:13px"></span><br>
+  <button class="piccolo" id="btnAggiorna">Aggiorna versione</button>
+  <button class="piccolo" id="btnTorna" hidden>Torna alla versione precedente</button>
   <button class="piccolo" id="btnEsci">Chiudi il programma</button>
 </footer>
 
@@ -195,21 +199,26 @@ async function api(path, dati) {
 }
 
 /* ---------- finestra di conferma (al posto di confirm(), che nelle finestre incorporate può non funzionare) ---------- */
-function chiedi(titolo, righe, ok, annulla) {
+function chiedi(titolo, righe, ok, annulla, campo) {
+  // campo (facoltativo): {segnaposto, valore}; in quel caso risponde con il testo scritto (o null se annulli)
   return new Promise(risolvi => {
     el("modaleTitolo").textContent = titolo;
     const corpo = el("modaleCorpo"); corpo.innerHTML = "";
     righe.forEach(r => { const p = document.createElement("p"); p.textContent = r; corpo.appendChild(p); });
-    el("modaleOk").textContent = ok; el("modaleAnnulla").textContent = annulla;
+    el("modaleOk").textContent = ok;
+    el("modaleAnnulla").textContent = annulla || ""; el("modaleAnnulla").hidden = !annulla;
+    const input = el("modaleCampo"); input.hidden = !campo;
+    if (campo) { input.value = campo.valore || ""; input.placeholder = campo.segnaposto || ""; }
     const velo = el("velo"); velo.hidden = false;
-    const tasto = e => { if (e.key === "Escape") chiudi(false); };
-    const chiudi = valore => {
+    const tasto = e => { if (e.key === "Escape") chiudi(false); if (e.key === "Enter" && campo) chiudi(true); };
+    const chiudi = si => {
       velo.hidden = true; document.removeEventListener("keydown", tasto);
-      el("modaleOk").onclick = el("modaleAnnulla").onclick = null; risolvi(valore);
+      el("modaleOk").onclick = el("modaleAnnulla").onclick = null;
+      risolvi(campo ? (si ? input.value.trim() : null) : si);
     };
     document.addEventListener("keydown", tasto);
     el("modaleOk").onclick = () => chiudi(true); el("modaleAnnulla").onclick = () => chiudi(false);
-    el("modaleOk").focus();
+    (campo ? input : el("modaleOk")).focus();
   });
 }
 
@@ -241,6 +250,8 @@ async function avvia() {
   aggiornaNomeFile();
   caricaLiturgia();
   setInterval(() => api("/api/ping"), 10000);
+  if (S.aggiornamenti.ripristino) { el("btnTorna").hidden = false; el("btnTorna").textContent = "Torna alla versione " + S.aggiornamenti.ripristino; }
+  setTimeout(controlloAutomatico, 2500);
 }
 
 /* ---------- sezioni e canti ---------- */
@@ -484,6 +495,79 @@ el("btnEsci").onclick = async () => {
   await api("/api/esci");
   document.body.innerHTML = "<p style='text-align:center;margin-top:80px;font-size:20px'>Programma chiuso. Puoi chiudere questa scheda.</p>";
 };
+/* ---------- aggiornamento del programma ---------- */
+let aggiornamentoInCorso = false;
+function righeNote(testo) {                       // le note della release (testo con simboli di formattazione) in righe semplici
+  return (testo || "").split("\n").map(r => r.replace(/^[#>\-*\s]+/, "• ").replace(/[*_`]/g, "").trim())
+    .filter(r => r && r !== "•").slice(0, 12);
+}
+async function riavviaProgramma() {
+  await api("/api/riavvia");
+  document.body.innerHTML = "<p style='text-align:center;margin-top:90px;font-size:20px;line-height:1.5'>" +
+    "Sto riavviando il programma…<br><span style='font-size:16px;opacity:.75'>Se non si riapre da solo entro qualche secondo, aprilo di nuovo dall’icona.</span></p>";
+}
+async function aggiornaVersione() {
+  if (aggiornamentoInCorso) return;
+  aggiornamentoInCorso = true;
+  const bt = el("btnAggiorna"); bt.disabled = true;
+  try {
+    if (!S.aggiornamenti.repository) {
+      const indirizzo = await chiedi("Dove si trovano gli aggiornamenti?",
+        ["Scrivi l’indirizzo del repository su GitHub nella forma utente/nome: è la parte dopo github.com/ nell’indirizzo della pagina."],
+        "Salva", "Annulla", { segnaposto: "es. parrocchia/messa-parrocchia" });
+      if (!indirizzo) return;
+      const s = await api("/api/aggiornamenti/impostazioni", { repository: indirizzo });
+      if (!s.ok) { mostraErrore(s.errore); return; }
+      S.aggiornamenti = { repository: s.repository, automatico: s.automatico, ripristino: s.ripristino };
+    }
+    bt.textContent = "Controllo…";
+    const c = await api("/api/aggiornamenti/controlla");
+    if (!c.ok) { mostraErrore(c.errore); return; }
+    el("bannerAgg").innerHTML = "";
+    if (!c.disponibile) {
+      await chiedi("Sei aggiornato", ["Hai già l’ultima versione (" + c.versione_corrente + ")."], "OK", "");
+      return;
+    }
+    const vai = await chiedi("È disponibile la versione " + c.versione,
+      ["Hai la versione " + c.versione_corrente + ".", ...righeNote(c.note),
+       "Il programma scaricherà l’aggiornamento e si riavvierà. PDF, impostazioni e testi che hai modificato non vengono toccati."],
+      "Aggiorna ora", "Più tardi");
+    if (!vai) return;
+    bt.textContent = "Aggiorno…";
+    const i = await api("/api/aggiornamenti/installa");
+    if (!i.ok) { mostraErrore(i.errore); return; }
+    await chiedi("Aggiornamento completato", ["Ora hai la versione " + i.versione + ".", ...(i.avvisi || []),
+      "Il programma si riavvia: ci vorranno pochi secondi."], "OK", "");
+    await riavviaProgramma();
+  } finally {
+    aggiornamentoInCorso = false;
+    if (el("btnAggiorna")) { el("btnAggiorna").disabled = false; el("btnAggiorna").textContent = "Aggiorna versione"; }
+  }
+}
+async function controlloAutomatico() {          // silenzioso: se non c'è Internet o non c'è nulla di nuovo, non dice niente
+  const a = S.aggiornamenti;
+  if (!a.automatico || !a.repository) return;
+  const c = await api("/api/aggiornamenti/controlla");
+  if (!c.ok || !c.disponibile) return;
+  const d = messaggio("avv", "È disponibile la versione " + c.versione + " del programma (hai la " + c.versione_corrente + "). ",
+                      null, null, el("bannerAgg"));
+  const b = document.createElement("button"); b.className = "piccolo"; b.textContent = "Aggiorna…";
+  b.style.marginLeft = "8px"; b.onclick = aggiornaVersione; d.appendChild(b);
+}
+async function tornaIndietro() {
+  const v = S.aggiornamenti.ripristino;
+  const si = await chiedi("Tornare alla versione " + v + "?",
+    ["Il programma tornerà com’era prima dell’ultimo aggiornamento. PDF, impostazioni e testi non vengono toccati."],
+    "Torna indietro", "Annulla");
+  if (!si) return;
+  const r = await api("/api/aggiornamenti/ripristina");
+  if (!r.ok) { mostraErrore(r.errore); return; }
+  await chiedi("Fatto", ["Ora hai di nuovo la versione " + r.versione + ". Il programma si riavvia."], "OK", "");
+  await riavviaProgramma();
+}
+el("btnAggiorna").onclick = aggiornaVersione;
+el("btnTorna").onclick = tornaIndietro;
+
 
 avvia();
 </script>
