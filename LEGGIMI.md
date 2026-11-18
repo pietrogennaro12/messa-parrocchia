@@ -18,6 +18,11 @@ Il pacchetto esiste in due versioni: **Mac** e **Windows**. Il programma è lo s
    l'icona resta nel Dock; chiudendo la finestra si chiude anche il programma.
    Se macOS avvisa che l'app non è verificata: *tasto destro → Apri* (solo la prima volta).
 
+**Se compare "Impossibile eseguire il file … non hai i privilegi di accesso adeguati"**: il file è arrivato senza il permesso
+di esecuzione. Apri **Terminale**, scrivi `bash ` (con uno spazio dopo), trascina nella finestra il file `Installa.command`
+e premi Invio. L'installazione parte e rende eseguibili anche gli altri file. (Se sei già dentro una shell `bash`,
+scrivi comunque `bash` davanti al percorso: senza, il Terminale dà di nuovo "Permission denied".)
+
 ### Su Windows (10 e 11)
 
 1. Installa **Python 3** da <https://www.python.org/downloads/windows/> (se non l'hai già).

@@ -545,6 +545,25 @@ class TestCreaPacchetti(unittest.TestCase):
             self.assertFalse((arc.getinfo("messa_parrocchia/app.py").external_attr >> 16) & 0o111)
             self.assertFalse([n for n in arc.namelist() if n.startswith("messa_parrocchia/archivi/") and n.endswith(".pdf")])
 
+    def test_permessi_scritti_nel_formato_completo_che_macos_capisce(self):
+        """Senza il tipo 'file normale' (S_IFREG) macOS non rende eseguibili i file: 'Installa.command' non parte."""
+        for sistema in ("Mac", "Windows"):
+            z = self.uscita / f"{sistema}.zip"
+            self.cp.crea(sistema, z)
+            with zipfile.ZipFile(z) as arc:
+                for info in arc.infolist():
+                    modo = info.external_attr >> 16
+                    self.assertEqual(info.create_system, 3, info.filename)             # creato come "Unix"
+                    self.assertTrue(stat.S_ISREG(modo), f"{info.filename}: manca il tipo di file ({oct(modo)})")
+                    self.assertEqual(stat.S_IMODE(modo) & 0o600, 0o600, info.filename)  # leggibile e scrivibile da chi lo usa
+        z = self.uscita / "Mac.zip"
+        self.cp.crea("Mac", z)
+        with zipfile.ZipFile(z) as arc:
+            for nome in ("Installa.command", "Avvia con Terminale.command", "Messa Parrocchia.app/Contents/MacOS/avvia"):
+                modo = arc.getinfo(f"messa_parrocchia/{nome}").external_attr >> 16
+                self.assertEqual(oct(modo), "0o100755", nome)                          # esattamente come fa il comando 'zip'
+            self.assertEqual(oct(arc.getinfo("messa_parrocchia/app.py").external_attr >> 16), "0o100644")
+
     def test_il_pacchetto_pubblico_si_installa_sopra_una_cartella_con_i_dati(self):
         """Prova completa: costruisco davvero il pacchetto e lo applico a un programma con PDF e impostazioni."""
         z = self.uscita / "m.zip"

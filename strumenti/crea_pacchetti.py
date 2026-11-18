@@ -18,6 +18,7 @@ import fnmatch
 import hashlib
 import json
 import re
+import stat
 import sys
 import zipfile
 from pathlib import Path
@@ -79,7 +80,10 @@ def crea(sistema, destinazione, con_canti=False):
         for rel in file + ["manifest.json"]:
             info = zipfile.ZipInfo(f"{CARTELLA_NEL_ZIP}/{rel}", date_time=(2026, 1, 1, 0, 0, 0))
             info.compress_type = zipfile.ZIP_DEFLATED
-            info.external_attr = (0o755 if _eseguibile(rel) else 0o644) << 16
+            info.create_system = 3                          # "Unix": senza questo macOS ignora i permessi
+            # i permessi vanno scritti COMPLETI, con il tipo "file normale" (S_IFREG): senza, macOS non rende
+            # eseguibili i file (errore "non hai i privilegi di accesso adeguati")
+            info.external_attr = (stat.S_IFREG | (0o755 if _eseguibile(rel) else 0o644)) << 16
             dati = (json.dumps(manifest, ensure_ascii=False, indent=1).encode("utf-8") if rel == "manifest.json"
                     else (RADICE / rel).read_bytes())
             z.writestr(info, dati)

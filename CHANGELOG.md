@@ -3,6 +3,12 @@
 Il numero di versione ha tre cifre: **maggiore.minore.correzione** (es. 1.2.0).
 Ogni versione pubblicata su GitHub ha il suo "tag" `v1.2.0`.
 
+## 1.1.1 — correzione dei pacchetti per Mac
+
+- I pacchetti `.zip` ora scrivono i permessi di esecuzione nel formato che macOS riconosce: `Installa.command` e l'app
+  si aprono con il doppio clic (nella 1.1.0 comparivano "non hai i privilegi di accesso adeguati").
+- Guida: cosa fare se un file `.command` non si apre.
+
 ## 1.1.0 — aggiornamento dal programma
 
 - Pulsante **Aggiorna versione**: controlla su GitHub se c'è una versione più nuova, la scarica, la verifica, ne conserva
