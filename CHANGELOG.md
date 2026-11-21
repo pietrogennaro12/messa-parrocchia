@@ -3,6 +3,12 @@
 Il numero di versione ha tre cifre: **maggiore.minore.correzione** (es. 1.2.0).
 Ogni versione pubblicata su GitHub ha il suo "tag" `v1.2.0`.
 
+## 1.2.0 — testata con logo e chiesa
+
+- In cima alla pagina compaiono il logo della parrocchia e una foto della chiesa, accanto al titolo (la foto si nasconde
+  da sola sugli schermi stretti). Le immagini sono in `web/img/`: per cambiarle basta sostituire i due file,
+  tenendo gli stessi nomi (`logo-parrocchia.jpg`, `chiesa.jpg`). Gli aggiornamenti non le sovrascrivono.
+
 ## 1.1.1 — correzione dei pacchetti per Mac
 
 - I pacchetti `.zip` ora scrivono i permessi di esecuzione nel formato che macOS riconosce: `Installa.command` e l'app

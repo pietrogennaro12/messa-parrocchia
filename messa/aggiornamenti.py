@@ -217,8 +217,8 @@ def protetto(rel: str, esiste: bool) -> bool:
         return True
     if p.startswith("archivi/") and p.lower().endswith(".pdf"):
         return True                                          # i PDF della parrocchia
-    if p.startswith("testi/") and esiste:
-        return True                                          # testi forse modificati: si aggiungono solo i nuovi
+    if p.startswith(("testi/", "web/img/")) and esiste:
+        return True                                          # testi e immagini forse personalizzati: si aggiungono solo i nuovi
     return False
 
 

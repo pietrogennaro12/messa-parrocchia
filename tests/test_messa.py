@@ -1092,5 +1092,65 @@ class TestVersioni(unittest.TestCase):
         self.assertFalse([f for f in file if "__pycache__" in f or f.endswith(".pyc")])
 
 
+class TestTestata(unittest.TestCase):
+    """Logo e foto della chiesa in cima alla pagina."""
+
+    RADICE = QUI.parent
+
+    def setUp(self):
+        import threading
+        from messa.server import Servizio, avvia
+        self.sv = Servizio(html_prova=str(QUI / "pagina_cei_esempio.html"))
+        self.srv = avvia(self.sv, 0)
+        threading.Thread(target=self.srv.serve_forever, daemon=True).start()
+        self.porta = self.srv.server_address[1]
+        self.addCleanup(self.srv.server_close)
+        self.addCleanup(self.srv.shutdown)
+
+    def _get(self, percorso):
+        import http.client
+        c = http.client.HTTPConnection("127.0.0.1", self.porta, timeout=5)
+        c.request("GET", percorso, headers={"Host": f"127.0.0.1:{self.porta}"})
+        r = c.getresponse()
+        corpo = r.read()
+        c.close()
+        return r.status, r.getheader("Content-Type"), r.getheader("Cache-Control"), corpo
+
+    def test_immagini_presenti_leggere_e_nel_formato_giusto(self):
+        from PIL import Image
+        for nome, larghezza_min in (("logo-parrocchia.jpg", 250), ("chiesa.jpg", 250)):
+            f = self.RADICE / "web" / "img" / nome
+            self.assertTrue(f.exists(), nome)
+            self.assertLess(f.stat().st_size, 120 * 1024, nome)                  # la pagina resta leggera
+            with Image.open(f) as im:
+                self.assertGreaterEqual(im.size[0], larghezza_min, nome)         # nitida anche su schermi Retina
+
+    def test_la_pagina_mostra_le_due_immagini_accanto_al_titolo(self):
+        html = (self.RADICE / "web" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('src="/img/logo-parrocchia.jpg"', html)
+        self.assertIn('src="/img/chiesa.jpg"', html)
+        self.assertIn('alt="', html.split('class="logo"')[1][:120])               # testo alternativo per chi non vede le immagini
+        self.assertLess(html.index("/img/logo-parrocchia.jpg"), html.index("Presentazione della Messa"))
+        self.assertLess(html.index("Presentazione della Messa"), html.index("/img/chiesa.jpg"))
+
+    def test_il_server_serve_le_immagini(self):
+        for nome in ("logo-parrocchia.jpg", "chiesa.jpg"):
+            stato, tipo, cache, corpo = self._get(f"/img/{nome}")
+            self.assertEqual((stato, tipo), (200, "image/jpeg"), nome)
+            self.assertIn("max-age", cache)                                       # non si riscarica a ogni apertura
+            self.assertEqual(corpo, (self.RADICE / "web" / "img" / nome).read_bytes())
+
+    def test_solo_le_immagini_della_cartella_si_possono_leggere(self):
+        for sbagliato in ("/img/../app.py", "/img/..%2fapp.py", "/img/%2e%2e/app.py", "/img/", "/img/non_esiste.jpg",
+                          "/img/chiesa.jpg/../../app.py", "/img/../../etc/passwd", "/img/LEGGIMI.md"):
+            self.assertEqual(self._get(sbagliato)[0], 404, sbagliato)
+
+    def test_le_immagini_gia_presenti_non_vengono_sovrascritte_dagli_aggiornamenti(self):
+        from messa import aggiornamenti as ag
+        self.assertTrue(ag.protetto("web/img/chiesa.jpg", True))                  # la parrocchia puo' averla cambiata
+        self.assertFalse(ag.protetto("web/img/nuova.jpg", False))                 # una immagine nuova invece si aggiunge
+        self.assertFalse(ag.protetto("web/index.html", True))                     # la pagina si aggiorna
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -5,4 +5,4 @@
 #   MINORE:     nuove funzioni compatibili   1.0.1 -> 1.1.0
 #   MAGGIORE:   cambiamenti importanti       1.1.0 -> 2.0.0
 # Va aggiornato anche in CHANGELOG.md.
-__version__ = "1.1.1"
+__version__ = "1.2.0"

@@ -6,6 +6,7 @@ Tutta la logica sta nei moduli di 'messa': qui ci sono solo le chiamate dell'int
 import dataclasses
 import datetime as dt
 import json
+import re
 import secrets
 import time
 import traceback
@@ -25,6 +26,7 @@ from .preghiere import leggi_preghiere
 from .sezioni import SEZIONI
 
 LOG = BASE / "log.txt"
+TIPI_IMMAGINE = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
 
 
 def log(testo):
@@ -231,11 +233,11 @@ def crea_handler(servizio: Servizio):
         def _host_ok(self):
             return self.headers.get("Host", "").split(":")[0] in ("127.0.0.1", "localhost")
 
-        def _invia(self, codice, contenuto: bytes, tipo):
+        def _invia(self, codice, contenuto: bytes, tipo, cache="no-store"):
             self.send_response(codice)
             self.send_header("Content-Type", tipo)
             self.send_header("Content-Length", str(len(contenuto)))
-            self.send_header("Cache-Control", "no-store")
+            self.send_header("Cache-Control", cache)
             self.end_headers()
             self.wfile.write(contenuto)
 
@@ -245,6 +247,12 @@ def crea_handler(servizio: Servizio):
             if self.path.split("?")[0] in ("/", "/index.html"):
                 html = pagina.replace("{{TOKEN}}", servizio.token)
                 return self._invia(200, html.encode("utf-8"), "text/html; charset=utf-8")
+            if self.path.split("?")[0].startswith("/img/"):          # immagini della testata (solo cartella web/img)
+                nome = self.path.split("?")[0][5:]
+                tipo = TIPI_IMMAGINE.get(Path(nome).suffix.lower())
+                percorso = BASE / "web" / "img" / nome
+                if tipo and re.fullmatch(r"[A-Za-z0-9_.-]+", nome) and percorso.is_file():
+                    return self._invia(200, percorso.read_bytes(), tipo, "public, max-age=3600")
             self._invia(404, b"Non trovato", "text/plain")
 
         def do_POST(self):
