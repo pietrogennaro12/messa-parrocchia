@@ -36,6 +36,14 @@ scrivi comunque `bash` davanti al percorso: senza, il Terminale dà di nuovo "Pe
 
 Non serve mai il Terminale (né la "finestra nera") dopo l'installazione.
 
+## Su Mac: icona sulla Scrivania o nel Dock
+
+La cosa più semplice è **trascinare l'icona nel Dock** (resta un riferimento all'icona originale), oppure fare
+*tasto destro sull'icona → Crea alias* e mettere l'alias dove vuoi. Anche una **copia** dell'icona funziona (dalla
+versione 1.2.1), ma solo dopo aver aperto **una volta** l'icona che sta *dentro* la cartella del programma: così
+il programma si ricorda dove si trova. Le copie vecchie vanno rifatte dopo l'aggiornamento. Non spostare la cartella
+del programma dopo aver messo le copie: se lo fai, riapri l'icona dalla nuova posizione.
+
 ## Su Mac: se l'icona "Messa Parrocchia" non si apre
 
 1. **Prova l'avvio di emergenza**: doppio clic su **Avvia con Terminale.command**. Si apre una finestra di Terminale:
@@ -134,9 +142,15 @@ punto (restano nell'ordine in cui sono scritti); con la ✕ si tolgono.
 - **Preghiere** (colletta, offerte, dopo la comunione, comunione spirituale): **una slide** ciascuna, con il carattere
   più grande che ci sta. Se ci sono alternative ("Oppure:"), ognuna ha la **sua slide** (titolo "COLLETTA · OPPURE").
 - **Canti**: una strofa per slide, ogni slide con il carattere più grande possibile; ritornelli in grassetto, testo centrato.
-- **Frontespizio ripetuto**: oltre che all'inizio, ricompare dopo il canto iniziale, dopo il Vangelo, dopo la preghiera
-  sulle offerte, dopo il Santo, dopo l'Agnello di Dio e dopo il canto di comunione. Sono voci della lista come le altre:
-  per non averne una basta togliere la spunta.
+- **Frontespizio**: la ricorrenza (es. "XXXIII Domenica del Tempo Ordinario") è il titolo, in grassetto e nel colore liturgico
+  del giorno; la data è il sottotitolo.
+- **Frontespizio ripetuto**: oltre che all'inizio, ricompare dopo il canto iniziale, l'atto penitenziale, il Gloria, la colletta,
+  il Vangelo, la professione di fede, le preghiere dei fedeli, la preghiera sulle offerte, il Santo, il canto della pace,
+  l'Agnello di Dio, la comunione spirituale, il canto di comunione, la preghiera dopo la comunione e il canto finale.
+  Sono voci della lista come le altre: per non averne una basta togliere la spunta.
+- **Preghiere dei fedeli**: una slide con il solo titolo, poi **una preghiera per slide** con "Ascoltaci, o Signore" in
+  giallo e grassetto in fondo (non sull'invito iniziale né sulla preghiera conclusiva). Il PDF può avere simboli strani al
+  posto di "ti", "tt", "tti" (`<`, `@`, `:`): il programma li corregge da solo e te lo segnala.
 - **Parti con scelta** (menu a tendina accanto alla voce):
   - **Atto penitenziale**: *Confesso*, *Pietà di noi* oppure solo il frontespizio.
   - **Gloria**: *Canto* (scelto dal PDF) oppure *Preghiera* (testo fisso).
@@ -160,6 +174,7 @@ compare in grassetto, le righe che iniziano con `#` sono commenti. Se un file ma
 | `font` | carattere (`Aptos`; se non c'è sul Mac usa `Calibri` o `Arial`) |
 | `canti_predefiniti` | canti proposti all'avvio, es. `{"agnello": "AGNELLO DI DIO"}` |
 | `cartella_output` | cartella di salvataggio (predefinita: Documenti\\Messe) |
+| `risposta_preghiere` | risposta in giallo dopo ogni preghiera dei fedeli (predefinita: `Ascoltaci, o Signore`; vuota = nessuna) |
 
 Le grandezze del carattere e i colori sono in `messa/pptx_builder.py` (in cima al file): per esempio
 `DIM_LETTURE = 50` (letture e Vangelo; abbassalo a 46 per avere meno slide) e `DIM_MASSIMA`/`DIM_MINIMA` per preghiere e canti.

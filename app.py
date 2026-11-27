@@ -12,7 +12,7 @@ import traceback
 import threading
 import time
 
-from messa import __version__, finestra
+from messa import __version__, config, finestra
 from messa.server import Servizio, avvia, log
 
 TIMEOUT_INATTIVITA = 600   # secondi senza segnali dalla pagina -> il programma si chiude
@@ -26,6 +26,7 @@ def main():
     ap.add_argument("--browser", action="store_true", help="apre il browser invece della finestra propria")
     a = ap.parse_args()
 
+    config.ricorda_cartella()
     servizio = Servizio(html_prova=a.html)
     server = avvia(servizio, a.porta)
     url = f"http://127.0.0.1:{server.server_address[1]}/"

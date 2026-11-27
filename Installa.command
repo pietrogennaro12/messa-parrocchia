@@ -46,6 +46,9 @@ chmod +x "Messa Parrocchia.app/Contents/MacOS/avvia" "Avvia con Terminale.comman
 xattr -dr com.apple.quarantine . 2>/dev/null
 xattr -cr "Messa Parrocchia.app" 2>/dev/null
 
+# ricordo dove sta il programma: cosi' l'icona copiata altrove (es. sulla Scrivania) lo ritrova
+mkdir -p "$HOME/Library/Application Support/Messa Parrocchia" && printf '%s\n' "$PWD" > "$HOME/Library/Application Support/Messa Parrocchia/cartella.txt"
+
 echo
 echo "Fatto! Da ora usa l'icona \"Messa Parrocchia\" in questa cartella"
 echo "(puoi trascinarla nel Dock o sul Desktop)."

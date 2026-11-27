@@ -20,9 +20,25 @@ PY="$DIR/.venv/bin/python"
 scrivi "=== avvio dall'icona ==="
 scrivi "cartella: $DIR | macOS $(sw_vers -productVersion 2>/dev/null) | $(uname -m) | utente: $(id -un)"
 
+# Se questa icona e' stata COPIATA fuori dalla cartella del programma (es. sulla Scrivania), il programma non e'
+# qui accanto: uso il percorso che il programma stesso ricorda (scritto a ogni avvio e da "Installa.command").
+RIFERIMENTO="$HOME/Library/Application Support/Messa Parrocchia/cartella.txt"
+if [ ! -x "$PY" ] && [ -r "$RIFERIMENTO" ]; then
+  ALTRA="$(head -n 1 "$RIFERIMENTO")"
+  scrivi "l'icona non e' nella cartella del programma: provo con $ALTRA"
+  if [ -x "$ALTRA/.venv/bin/python" ]; then
+    DIR="$ALTRA"
+    PY="$ALTRA/.venv/bin/python"
+  else
+    scrivi "ERRORE: nel percorso ricordato non trovo il programma: $ALTRA"
+    avviso $'Il programma non è più dove era installato:\n'"$ALTRA"$'\n\nSe hai spostato la cartella, aprila e fai doppio clic su “Messa Parrocchia” (l’icona che sta dentro la cartella): da lì in poi anche le copie dell’icona funzioneranno.'
+    exit 1
+  fi
+fi
+
 if [ ! -x "$PY" ]; then
-  scrivi "ERRORE: non trovo $PY (installazione non fatta, oppure cartella non accessibile)"
-  avviso $'Non riesco ad avviare il programma.\n\nSe non hai ancora fatto l’installazione: nella cartella del programma fai doppio clic su “Installa.command”.\n\nSe l’hai già fatta e il messaggio compare ancora, rifai doppio clic su “Installa.command”. Se non basta, prova a spostare la cartella in “Applicazioni”.'
+  scrivi "ERRORE: non trovo $PY (installazione non fatta, oppure icona copiata fuori dalla cartella)"
+  avviso $'Non riesco ad avviare il programma.\n\nSe non hai ancora fatto l’installazione: nella cartella del programma fai doppio clic su “Installa.command”.\n\nSe hai copiato l’icona fuori dalla cartella, apri una volta l’icona che sta DENTRO la cartella del programma: da lì in poi la copia funzionerà. Oppure, al posto della copia, crea un alias (tasto destro sull’icona, “Crea alias”).'
   exit 1
 fi
 

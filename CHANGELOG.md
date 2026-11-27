@@ -3,6 +3,28 @@
 Il numero di versione ha tre cifre: **maggiore.minore.correzione** (es. 1.2.0).
 Ogni versione pubblicata su GitHub ha il suo "tag" `v1.2.0`.
 
+## 1.3.0 — frontespizio rinnovato, preghiere dei fedeli migliorate
+
+- **Frontespizio**: la ricorrenza (es. "XXXIII Domenica del Tempo Ordinario") è il titolo principale, in grassetto e nel
+  **colore liturgico** del giorno; la data è il sottotitolo.
+- **Frontespizio ripetuto in 15 punti**: dopo canto iniziale, atto penitenziale, Gloria, colletta, Vangelo, professione di
+  fede, preghiere dei fedeli, preghiera sulle offerte, Santo, canto della pace, Agnello di Dio, comunione spirituale,
+  canto di comunione, preghiera dopo la comunione e canto finale. Ognuno si può togliere dalla lista.
+- **Preghiere dei fedeli**: prima slide con il solo titolo; poi **una preghiera per slide**, con "Ascoltaci, o Signore" in
+  giallo e grassetto (come il ritornello del salmo) alla fine di ogni intenzione. Non viene aggiunto all'invito iniziale né
+  alla preghiera conclusiva. Il testo si cambia con `risposta_preghiere` in `config.json`.
+- **Preghiere dei fedeli, PDF con simboli strani**: sistemato il difetto per cui «ti», «tt», «tti» comparivano come `<`, `@`,
+  `:` ("noi < preghiamo", "perme@e", "tu: i fratelli"). Il programma riconosce quei simboli e rimette le lettere giuste,
+  e lo segnala. Anche le ligature vere (ﬁ, ﬃ…) diventano lettere normali. Il titolo del documento non è più una slide.
+- Piccole correzioni alle maiuscole del titolo ("Tutti i Fedeli Defunti").
+
+## 1.2.1 — icona Mac copiabile
+
+- L'icona "Messa Parrocchia" copiata fuori dalla cartella del programma (per esempio sulla Scrivania) ora funziona:
+  il programma ricorda dove sta. Prima compariva "Non riesco ad avviare il programma".
+  Dopo l'aggiornamento basta aprire una volta l'icona che sta dentro la cartella, poi rifare la copia
+  (le copie fatte in precedenza hanno il vecchio file di avvio).
+
 ## 1.2.0 — testata con logo e chiesa
 
 - In cima alla pagina compaiono il logo della parrocchia e una foto della chiesa, accanto al titolo (la foto si nasconde

@@ -63,11 +63,20 @@ _BASE = [
 # Ogni ripetizione e' una sezione come le altre: si puo' togliere dalla lista nell'interfaccia.
 RIPETI_FRONTESPIZIO = [
     ("canto_iniziale", "dopo il canto iniziale"),
+    ("atto_penitenziale", "dopo l’atto penitenziale"),
+    ("gloria", "dopo il Gloria"),
+    ("colletta", "dopo la colletta"),
     ("vangelo", "dopo il Vangelo"),
+    ("professione_fede", "dopo la professione di fede"),
+    ("preghiere_fedeli", "dopo le preghiere dei fedeli"),
     ("sulle_offerte", "dopo la preghiera sulle offerte"),
     ("santo", "dopo il Santo"),
+    ("canto_pace", "dopo il canto della pace"),
     ("agnello_di_dio", "dopo l’Agnello di Dio"),
+    ("comunione_spirituale", "dopo la comunione spirituale"),
     ("canto_comunione", "dopo il canto di comunione"),
+    ("dopo_comunione", "dopo la preghiera dopo la comunione"),
+    ("canto_finale", "dopo il canto finale"),
 ]
 
 

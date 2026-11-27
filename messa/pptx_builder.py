@@ -6,7 +6,8 @@ Il "piano" e' una lista di voci, nell'ordine delle slide:
   {"tipo": "frontespizio", "data": date, "celebrazione": str, "parrocchia": str}
   {"tipo": "vuota"}
   {"tipo": "segnaposto", "titolo": str}
-  {"tipo": "testo", "titolo": str, "blocchi": [[...]], "modo": "unica" | "salmo" | "testo" | "preghiere"}
+  {"tipo": "testo", "titolo": str, "blocchi": [[...]], "modo": "unica" | "salmo" | "testo" | "preghiere",
+   "risposta": str (solo "preghiere": la risposta dell'assemblea, in giallo dopo ogni intenzione)}
   {"tipo": "canto", "titolo": str, "titolo_canto": str, "blocchi": [[...]]}
 """
 import re
@@ -19,7 +20,8 @@ from pptx.util import Inches, Pt
 
 from . import impaginazione as imp
 from .errori import ErroreMessa
-from .impaginazione import MARCA
+from .impaginazione import MARCA, MARCA_ORO, senza_marca
+from .preghiere import e_intenzione
 
 GIORNI = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
 MESI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio",
@@ -62,7 +64,9 @@ def formatta_nome(nome: str) -> str:
     def parola(m):
         w = m.group(0)
         low = w.lower()
-        romano = re.fullmatch(r"[IVXLC]+", w) and (len(w) > 1 or w in ("I", "V", "X"))
+        # numero romano: "XXXII", "IV"...; una lettera sola ("I") solo a inizio nome ("I Domenica di Avvento"),
+        # altrimenti e' l'articolo ("Tutti i fedeli defunti")
+        romano = re.fullmatch(r"[IVXLC]+", w) and (len(w) > 1 or (w in ("I", "V", "X") and stato["prima"]))
         if romano:
             out = w
         elif re.fullmatch(r"[A-C]", w) and stato["prec"] == "anno":
@@ -116,24 +120,34 @@ class Costruttore:
 
     # --- tipi di slide ------------------------------------------------------
     def frontespizio(self, data, celebrazione, parrocchia, sottotitolo=None):
+        """
+        Titolo principale: la ricorrenza (es. "XXXIII Domenica del Tempo Ordinario"), in grassetto e nel
+        COLORE LITURGICO del giorno. Sottotitolo: la data. Se il nome non c'e', la data fa da titolo.
+        """
         s = self._slide()
         W = self.prs.slide_width
-        tf = self._testo(s, Inches(0.8), Inches(1.4), W - Inches(1.6), Inches(4.7), MSO_ANCHOR.MIDDLE)
-        righe = [
-            (parrocchia.upper(), 28, COLORE_TITOLO, True),
-            (f"{GIORNI[data.weekday()].capitalize()} {data.day} {MESI[data.month - 1]} {data.year}",
-             54, COLORE_TESTO, True),
-            (formatta_nome(celebrazione), 30, COLORE_TESTO, False),
-            (sottotitolo or "", 30, COLORE_TITOLO, False),           # es. "Messa della notte"
-        ]
+        tf = self._testo(s, Inches(0.8), Inches(1.2), W - Inches(1.6), Inches(5.1), MSO_ANCHOR.MIDDLE)
+        nome = formatta_nome(celebrazione or "")
+        nome = re.sub(r"\s+[-–]\s+", "\u00a0– ", nome)       # "Ordinario – Anno A": se va a capo, il trattino resta sulla prima riga
+        testo_data = f"{GIORNI[data.weekday()].capitalize()} {data.day} {MESI[data.month - 1]} {data.year}"
+        if nome:
+            dim_titolo = 54 if len(nome) <= 34 else 48 if len(nome) <= 52 else 42
+            righe = [(parrocchia.upper(), 28, COLORE_TITOLO, True, 20),
+                     (nome, dim_titolo, self.colore, True, 16),
+                     (testo_data, 34, COLORE_TESTO, False, 14),
+                     (sottotitolo or "", 30, COLORE_TITOLO, False, 14)]          # es. "Messa della notte"
+        else:
+            righe = [(parrocchia.upper(), 28, COLORE_TITOLO, True, 20),
+                     (testo_data, 54, COLORE_TESTO, True, 14),
+                     (sottotitolo or "", 30, COLORE_TITOLO, False, 14)]
         primo = True
-        for t, size, col, bold in righe:
+        for t, size, col, bold, sotto in righe:
             if not t:
                 continue
             p = tf.paragraphs[0] if primo else tf.add_paragraph()
             primo = False
             p.alignment = PP_ALIGN.CENTER
-            p.space_after = Pt(18)
+            p.space_after = Pt(sotto)
             self._run(p, t, size, col, bold)
 
     def vuota(self):
@@ -169,8 +183,9 @@ class Costruttore:
                 if j == 0 and i > 0:
                     p.space_before = Pt(22)
                 marcata = riga.startswith(MARCA)
-                riga = riga.lstrip(MARCA)
-                ritornello = riga.startswith("R.")
+                oro = riga.startswith(MARCA_ORO)                          # risposta dell'assemblea: giallo e grassetto
+                riga = senza_marca(riga)
+                ritornello = riga.startswith("R.") or oro
                 self._run(p, riga, size, COLORE_TITOLO if ritornello else COLORE_TESTO,
                           bold=ritornello or marcata)
 
@@ -195,7 +210,7 @@ class Costruttore:
             self._run(p, r, 44, COLORE_TITOLO, True)
 
     # --- sezioni con impaginazione -----------------------------------------
-    def sezione_testo(self, titolo, blocchi, modo):
+    def sezione_testo(self, titolo, blocchi, modo, risposta=None):
         if modo == "lettura":
             return self._lettura(titolo, blocchi)
         if modo == "salmo":
@@ -208,9 +223,13 @@ class Costruttore:
             for k, (g, size) in enumerate(slides, 1):
                 self.testo(titolo, g, k, len(slides), size, True)
             return
-        # "preghiere": ogni intenzione = una slide, alla propria grandezza
+        # "preghiere dei fedeli": prima UNA slide con il solo titolo, poi UNA slide per ogni preghiera; alla fine
+        # di ogni intenzione la risposta dell'assemblea in giallo e grassetto (come il ritornello del salmo)
+        self.segnaposto(titolo)
+        risposta = (risposta or "").strip()
+        gruppi = [[b, [MARCA_ORO + risposta]] if risposta and e_intenzione(b, risposta) else [b] for b in blocchi]
         verso = imp.e_verso(blocchi)
-        slides = imp.impagina_individuale([[b] for b in blocchi], verso, DIM_MASSIMA, DIM_MINIMA)
+        slides = imp.impagina_individuale(gruppi, verso, DIM_MASSIMA, DIM_MINIMA)
         for k, (g, size) in enumerate(slides, 1):
             self.testo(titolo, g, k, len(slides), size, verso)
 
@@ -266,7 +285,7 @@ def costruisci(piano, font, colore_barra, percorso):
             elif t == "segnaposto":
                 c.segnaposto(v["titolo"])
             elif t == "testo":
-                c.sezione_testo(v["titolo"], v["blocchi"], v["modo"])
+                c.sezione_testo(v["titolo"], v["blocchi"], v["modo"], v.get("risposta"))
             elif t == "canto":
                 c.canto(v["titolo"], v["titolo_canto"], v["blocchi"])
         c.salva(percorso)

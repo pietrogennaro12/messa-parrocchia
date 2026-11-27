@@ -7,7 +7,7 @@ from pathlib import Path
 from . import config as cfgmod
 from .errori import ErroreMessa, MESSAGGI
 from .pptx_builder import costruisci
-from .preghiere import leggi_preghiere
+from .preghiere import analizza_preghiere
 from .sezioni import SEZIONI
 from .testi import carica_testo
 
@@ -121,8 +121,17 @@ def _sezione(piano, avvisi, sez, scelte, canti_scelti, varianti, liturgia, archi
         _testo_fisso(piano, avvisi, nome, nome, sez["file"], sez["modo"])
     elif fonte == "preghiere":
         try:
-            blocchi = leggi_preghiere(cfgmod.percorso(cfg["pdf_preghiere"]), cfg.get("pagine_preghiere", ""))
-            piano.append({"tipo": "testo", "titolo": nome, "blocchi": blocchi, "modo": "preghiere"})
+            blocchi, info = analizza_preghiere(cfgmod.percorso(cfg["pdf_preghiere"]), cfg.get("pagine_preghiere", ""))
+            piano.append({"tipo": "testo", "titolo": nome, "blocchi": blocchi, "modo": "preghiere",
+                          "risposta": cfg.get("risposta_preghiere", "Ascoltaci, o Signore")})
+            if info["riparati"]:
+                avvisi.append({"codice": "INFO", "sezione": nome, "dettaglio": "",
+                               "messaggio": f"Preghiere dei fedeli: nel PDF {info['riparati']} gruppi di lettere («ti», «tt», «tti») "
+                                            "erano scritti con simboli strani (<, @, :): li ho corretti. Dai comunque un'occhiata al testo."})
+            if info["sospetti"]:
+                avvisi.append({"codice": "INFO", "sezione": nome, "dettaglio": "",
+                               "messaggio": f"Preghiere dei fedeli: nel PDF ci sono {info['sospetti']} caratteri insoliti "
+                                            "che non so correggere: controlla il testo."})
         except ErroreMessa as e:
             avvisi.append(_avviso(e.codice, nome, e.dettaglio))
             piano.append({"tipo": "segnaposto", "titolo": nome})

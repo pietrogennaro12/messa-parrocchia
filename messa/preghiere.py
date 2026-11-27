@@ -6,6 +6,13 @@ Il documento viene letto per paragrafi: gli "a capo" dovuti solo all'impaginazio
 del PDF vengono eliminati, mentre le righe vuote tra un paragrafo e l'altro restano.
 In config.json si puo' indicare un intervallo di pagine (es. "3-4") se il PDF
 contiene piu' celebrazioni.
+
+Correzioni automatiche:
+  * LIGATURE: alcuni PDF (es. creati da Word con certi caratteri) scrivono "ti", "tt" e "tti" come un unico
+    simbolo che poi si legge come "<", "@" e ":" ("noi < preghiamo", "perme@e", "tu: i fratelli").
+    Si riconoscono dalla LARGHEZZA del simbolo (un due punti vero e' stretto, quello che nasconde "tti" e'
+    largo il triplo) e si rimettono le lettere giuste. Le ligature "vere" (ﬁ ﬂ ﬃ...) diventano lettere normali.
+  * TITOLO DEL DOCUMENTO ("Preghiere dei fedeli - 21/22 novembre") scartato: la slide del titolo la crea il programma.
 """
 import re
 from pathlib import Path
@@ -31,19 +38,90 @@ def _pagine_richieste(testo: str, totale: int):
     return scelte
 
 
+LIGATURE_UNICODE = {"ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi", "ﬄ": "ffl", "ﬅ": "st", "ﬆ": "st"}
+_SIMBOLI = ":<@"
+_TITOLO_DOCUMENTO = re.compile(r"^\s*(preghiere?\s+dei\s+fedeli|preghiera\s+universale)", re.I)
+_SOSPETTI = re.compile(r"[<>@^~|]|(?<=[A-Za-zÀ-ÿ]):(?=[A-Za-zÀ-ÿ])")
+
+
+def ripara_riga(riga):
+    """
+    riga: una riga di pdfplumber (con "text" e "chars"). Restituisce (testo corretto, simboli riparati).
+    Sostituisce i simboli che nascondono una ligatura: ":" largo -> "tti", "<" -> "ti", "@" stretta -> "tt".
+    """
+    scelte = []
+    for c in riga["chars"]:
+        t = c["text"]
+        if t not in _SIMBOLI:
+            continue
+        rapporto = (c["x1"] - c["x0"]) / c["size"] if c.get("size") else 0
+        if t == ":" and rapporto > 0.5:          # due punti vero: ~0,27; la ligatura "tti": ~0,86
+            scelte.append("tti")
+        elif t == "<":
+            scelte.append("ti")
+        elif t == "@" and rapporto < 0.8:        # chiocciola vera: ~0,94; la ligatura "tt": ~0,63
+            scelte.append("tt")
+        else:
+            scelte.append(t)
+    testo, i, riparati = [], 0, 0
+    for ch in riga["text"]:
+        if ch in _SIMBOLI:
+            nuovo = scelte[i] if i < len(scelte) else ch
+            i += 1
+            riparati += nuovo != ch
+            testo.append(nuovo)
+        else:
+            testo.append(LIGATURE_UNICODE.get(ch, ch))
+    return "".join(testo), riparati
+
+
+def _senza_punteggiatura(t: str) -> str:
+    return " ".join(re.sub(r"[^\w]+", " ", t.lower()).split())
+
+
+def e_intenzione(blocco, risposta="Ascoltaci, o Signore") -> bool:
+    """
+    True se il paragrafo e' una vera intenzione di preghiera, dopo la quale l'assemblea risponde.
+    NON lo sono: la preghiera conclusiva ("... Per Cristo nostro Signore. Amen"), l'invito iniziale
+    ("... e diciamo insieme") e i paragrafi che contengono gia' la risposta.
+    """
+    testo = " ".join(blocco).strip()
+    basso = testo.lower()
+    if risposta and " " + _senza_punteggiatura(risposta) + " " in " " + _senza_punteggiatura(testo) + " ":
+        return False                                                  # la risposta c'e' gia' (anche con altra punteggiatura)
+    if re.search(r"per cristo,? nostro signore\.?(\s*amen\.?)?$", basso) or re.search(r"\bamen\.?$", basso):
+        return False
+    if re.search(r"\b(diciamo|rispondiamo|invochiamo)(\s+insieme)?\s*[:.]?$", basso) or \
+            re.search(r"\bpreghiamo\s+insieme\s*[:.]?$", basso):
+        return False
+    return bool(testo)
+
+
+def analizza_preghiere(pdf: Path, pagine: str = ""):
+    """Come leggi_preghiere, ma restituisce anche (blocchi, info) con quante correzioni sono state fatte."""
+    blocchi, info = _leggi(pdf, pagine)
+    return blocchi, info
+
+
 def leggi_preghiere(pdf: Path, pagine: str = "") -> list:
     """Restituisce una lista di blocchi; ogni blocco e' una lista di righe (paragrafi)."""
+    return _leggi(pdf, pagine)[0]
+
+
+def _leggi(pdf: Path, pagine: str = ""):
     pdf = Path(pdf)
     if not pdf.exists():
         raise ErroreMessa("E05", str(pdf))
     try:
         import pdfplumber
-        righe_pagina = []
+        righe_pagina, riparati = [], 0
         with pdfplumber.open(str(pdf)) as doc:
             for n in _pagine_richieste(pagine, len(doc.pages)):
                 for L in doc.pages[n - 1].extract_text_lines(return_chars=True):
                     dim = max((c["size"] for c in L["chars"]), default=0)
-                    righe_pagina.append((L["top"], L["bottom"], re.sub(r"\s+", " ", L["text"]).strip(), dim))
+                    testo, n_riparati = ripara_riga(L)
+                    riparati += n_riparati
+                    righe_pagina.append((L["top"], L["bottom"], re.sub(r"\s+", " ", testo).strip(), dim))
                 righe_pagina.append(None)          # stacco di pagina
     except ErroreMessa:
         raise
@@ -51,7 +129,7 @@ def leggi_preghiere(pdf: Path, pagine: str = "") -> list:
         raise ErroreMessa("E06", f"{pdf.name}: {str(e)[:100]}")
 
     # raggruppo in blocchi dove lo spazio verticale e' piu' grande del normale
-    blocchi, cur, prec = [], [], None
+    blocchi, cur, prec, sono_titoli = [], [], None, []
     vere = [x for x in righe_pagina if x]
     stacchi = sorted(abs(r[0] - p[1]) for r, p in zip(vere[1:], vere))
     mediano = stacchi[len(stacchi) // 2] if stacchi else 0
@@ -69,10 +147,18 @@ def leggi_preghiere(pdf: Path, pagine: str = "") -> list:
         if cur and (stacco or titolo or (prec is not None and prec[3] > 1.15 * dim_normale)):
             blocchi.append(cur)
             cur = []
+        if not cur:
+            sono_titoli.append(bool(titolo))
         cur.append(r[2])
         prec = r
     if cur:
         blocchi.append(cur)
+
+    # il titolo del documento ("Preghiere dei fedeli - 21/22 novembre") non e' una preghiera
+    titolo_scartato = None
+    if blocchi and (sono_titoli[0] or _TITOLO_DOCUMENTO.match(" ".join(blocchi[0]))) and len(blocchi) > 1:
+        titolo_scartato = " ".join(blocchi[0])
+        blocchi, sono_titoli = blocchi[1:], sono_titoli[1:]
 
     # elimino gli a capo "tecnici": una riga che non finisce con punteggiatura continua nella successiva
     risultato = []
@@ -88,4 +174,5 @@ def leggi_preghiere(pdf: Path, pagine: str = "") -> list:
         risultato.append([re.sub(r"(\w)- (\w)", r"\1\2", r) for r in righe])
     if not risultato:
         raise ErroreMessa("E06", f"{pdf.name}: nessun testo trovato (forse è una scansione?).")
-    return risultato
+    sospetti = len(_SOSPETTI.findall(" ".join(r for b in risultato for r in b)))
+    return risultato, {"riparati": riparati, "sospetti": sospetti, "titolo_scartato": titolo_scartato}

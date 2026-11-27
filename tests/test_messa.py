@@ -524,6 +524,8 @@ class TestNomeCelebrazione(unittest.TestCase):
         self.assertEqual(formatta_nome("SOLENNITÀ DEI SANTI PIETRO E PAOLO"), "Solennità dei Santi Pietro e Paolo")
         self.assertEqual(formatta_nome("MESSA DELL’AURORA"), "Messa dell’Aurora")
         self.assertEqual(formatta_nome("I DOMENICA DI AVVENTO - ANNO B"), "I Domenica di Avvento - Anno B")
+        self.assertEqual(formatta_nome("COMMEMORAZIONE DI TUTTI I FEDELI DEFUNTI"), "Commemorazione di Tutti i Fedeli Defunti")
+        self.assertEqual(formatta_nome("XXXIII DOMENICA DEL TEMPO ORDINARIO"), "XXXIII Domenica del Tempo Ordinario")
 
     def test_il_nome_puo_essere_corretto_a_mano(self):
         from messa.server import Servizio
@@ -658,9 +660,14 @@ class TestWindows(unittest.TestCase):
 
 
 class TestFrontespizioRipetuto(unittest.TestCase):
-    """Il frontespizio ripetuto dopo sei punti della Messa."""
+    """Il frontespizio ripetuto in 15 punti della Messa."""
 
-    PUNTI = ["Canto iniziale", "Vangelo", "Preghiera sulle offerte", "Santo", "Agnello di Dio", "Canto di comunione"]
+    # titolo della slide che PRECEDE ogni frontespizio ripetuto, nell'ordine (varianti predefinite)
+    PRIMA_DI_OGNI_RIPETIZIONE = [
+        "Canto iniziale", "Atto penitenziale · Confesso", "Gloria", "Colletta", "Vangelo",
+        "Professione di fede · Credo", "Preghiere dei fedeli", "Preghiera sulle offerte", "Santo",
+        "Canto della pace", "Agnello di Dio", "Comunione spirituale", "Canto di comunione",
+        "Preghiera dopo la comunione", "Canto finale"]
 
     def setUp(self):
         self.cfg = config.carica()
@@ -674,33 +681,46 @@ class TestFrontespizioRipetuto(unittest.TestCase):
                              _ArchivioFinto(), None, self.cfg, None, extra)[0]
 
     def _prima_di_ogni_frontespizio(self, piano):
-        out = []
-        for i, v in enumerate(piano):
-            if v["tipo"] == "frontespizio" and i > 0:
-                out.append(piano[i - 1].get("titolo"))
-        return out
+        return [piano[i - 1].get("titolo") for i, v in enumerate(piano) if v["tipo"] == "frontespizio" and i > 0]
 
-    def test_sei_sezioni_in_piu_con_i_nomi_giusti(self):
+    def test_quindici_sezioni_in_piu_con_i_nomi_giusti(self):
         ripetute = [x for x in SEZIONI if x["id"].startswith("frontespizio_dopo_")]
-        self.assertEqual(len(ripetute), 6)
-        self.assertEqual(len(SEZIONI), 27)
-        self.assertEqual(len({x["id"] for x in SEZIONI}), 27)                 # identificativi tutti diversi
+        self.assertEqual(len(ripetute), 15)
+        self.assertEqual(len(SEZIONI), 36)
+        self.assertEqual(len({x["id"] for x in SEZIONI}), 36)                 # identificativi tutti diversi
         self.assertTrue(all(x["fonte"] == "sistema" for x in ripetute))
 
+    def test_i_nove_punti_aggiunti(self):
+        nuovi = ("atto_penitenziale", "gloria", "colletta", "professione_fede", "preghiere_fedeli", "canto_pace",
+                 "comunione_spirituale", "dopo_comunione", "canto_finale")
+        ids = {x["id"] for x in SEZIONI}
+        for n in nuovi:
+            self.assertIn(f"frontespizio_dopo_{n}", ids, n)
+
     def test_posizioni(self):
-        self.assertEqual(self._prima_di_ogni_frontespizio(self._piano()), self.PUNTI)
+        self.assertEqual(self._prima_di_ogni_frontespizio(self._piano()), self.PRIMA_DI_OGNI_RIPETIZIONE)
+
+    def test_ogni_ripetizione_sta_subito_dopo_la_sua_sezione_nella_lista(self):
+        ids = [x["id"] for x in SEZIONI]
+        for sez_id, _ in __import__("messa.sezioni", fromlist=["x"]).RIPETI_FRONTESPIZIO:
+            self.assertEqual(ids[ids.index(sez_id) + 1], f"frontespizio_dopo_{sez_id}", sez_id)
+
+    def test_la_Messa_inizia_e_finisce_con_il_frontespizio(self):
+        piano = self._piano()
+        self.assertEqual(piano[0]["tipo"], "frontespizio")
+        self.assertEqual(piano[-1]["tipo"], "frontespizio")                   # dopo il canto finale
 
     def test_slide_identiche_al_frontespizio_iniziale(self):
         piano = self._piano()
         fronti = [v for v in piano if v["tipo"] == "frontespizio"]
-        self.assertEqual(len(fronti), 7)                                       # 1 iniziale + 6 ripetuti
+        self.assertEqual(len(fronti), 16)                                       # 1 iniziale + 15 ripetuti
         self.assertTrue(all(f == fronti[0] for f in fronti))
 
     def test_ognuna_si_puo_togliere(self):
         for sez in SEZIONI:
             if sez["id"].startswith("frontespizio_dopo_"):
                 piano = self._piano(self.tutti - {sez["id"]})
-                self.assertEqual(sum(v["tipo"] == "frontespizio" for v in piano), 6, sez["id"])
+                self.assertEqual(sum(v["tipo"] == "frontespizio" for v in piano), 15, sez["id"])
 
     def test_ordine_fisso_qualunque_sia_la_selezione(self):
         solo = {"frontespizio_dopo_vangelo", "vangelo", "canto_iniziale", "frontespizio_dopo_canto_iniziale"}
@@ -724,7 +744,6 @@ class TestFrontespizioRipetuto(unittest.TestCase):
         self.assertIn("Domenica 8 novembre 2026", fronte[0])
         self.assertTrue(testi[0].startswith("CANTO INIZIALE"))
         self.assertIn("PARROCCHIA DI TERRANEGRA", testi[testi.index(fronte[0])])
-
 
 class _EventoFinto:
     """Imita l'evento 'shown' di pywebview: si aggiungono funzioni con +=, e scattano all'avvio."""
@@ -994,6 +1013,76 @@ class TestAvvioMac(unittest.TestCase):
         testo = (QUI.parent / "app.py").read_text(encoding="utf-8")
         self.assertIn("platform.machine()", testo)
         self.assertIn("platform.python_version()", testo)
+
+    # --- icona copiata fuori dalla cartella del programma (es. sulla Scrivania) ---
+    def _prova_icona_copiata(self, riferimento):
+        """riferimento: None (nessun percorso ricordato), "valido" o "inesistente". Restituisce (codice, diario)."""
+        import os
+        import subprocess
+        d = Path(tempfile.mkdtemp())
+        programma = d / "Programma con spazi è"                              # spazi e accenti nel percorso
+        (programma / ".venv" / "bin").mkdir(parents=True)
+        py = programma / ".venv" / "bin" / "python"
+        py.write_text("#!/bin/bash\n[ \"$1\" = \"-c\" ] && exit 0\necho \"avviato da: $PWD\"\nexit 0\n")
+        os.chmod(py, 0o755)
+        (programma / "app.py").write_text("# finto")
+        copia = d / "Scrivania" / "Messa Parrocchia.app" / "Contents" / "MacOS"       # l'icona, da sola, sulla Scrivania
+        copia.mkdir(parents=True)
+        shutil_copy(self.avvia, copia / "avvia")
+        os.chmod(copia / "avvia", 0o755)
+        casa = d / "casa"
+        cartella_rif = casa / "Library" / "Application Support" / "Messa Parrocchia"
+        cartella_rif.mkdir(parents=True)
+        if riferimento == "valido":
+            (cartella_rif / "cartella.txt").write_text(str(programma) + "\n")
+        elif riferimento == "inesistente":
+            (cartella_rif / "cartella.txt").write_text(str(d / "non_esiste") + "\n")
+        self.programma = programma
+        r = subprocess.run([str(copia / "avvia")], cwd="/", capture_output=True, timeout=60,
+                           env={"HOME": str(casa), "PATH": "/usr/bin:/bin"})
+        log = casa / "Library" / "Logs" / "Messa Parrocchia" / "avvio.log"
+        return r.returncode, log.read_text(encoding="utf-8") if log.exists() else ""
+
+    def test_icona_copiata_sulla_scrivania_ritrova_il_programma(self):
+        codice, log = self._prova_icona_copiata("valido")
+        self.assertEqual(codice, 0)
+        self.assertIn("l'icona non e' nella cartella del programma", log)
+        self.assertIn(f"avviato da: {self.programma}", log)                       # il programma parte dalla SUA cartella
+
+    def test_icona_copiata_senza_percorso_ricordato(self):
+        codice, log = self._prova_icona_copiata(None)
+        self.assertEqual(codice, 1)
+        self.assertIn("ERRORE: non trovo", log)
+        self.assertIn("icona copiata fuori dalla cartella", log)                   # il diario ne indica il motivo probabile
+
+    def test_icona_copiata_con_percorso_non_piu_valido(self):
+        codice, log = self._prova_icona_copiata("inesistente")
+        self.assertEqual(codice, 1)
+        self.assertIn("nel percorso ricordato non trovo il programma", log)
+
+    def test_icona_nella_cartella_non_consulta_il_percorso_ricordato(self):
+        codice, log = self._prova(self.PY_OK)
+        self.assertEqual(codice, 0)
+        self.assertNotIn("l'icona non e'", log)
+
+    def test_il_programma_ricorda_dove_sta(self):
+        from messa import config
+        with tempfile.TemporaryDirectory() as casa:
+            scritto = Path(casa) / "Library" / "Application Support" / "Messa Parrocchia" / "cartella.txt"
+            with mock.patch.object(config.sys, "platform", "darwin"), mock.patch.object(config.Path, "home", return_value=Path(casa)):
+                config.ricorda_cartella()
+            self.assertEqual(scritto.read_text(encoding="utf-8").strip(), str(config.BASE))
+            scritto.unlink()
+            for altro in ("win32", "linux"):                                       # solo su Mac
+                with mock.patch.object(config.sys, "platform", altro), mock.patch.object(config.Path, "home", return_value=Path(casa)):
+                    config.ricorda_cartella()
+                self.assertFalse(scritto.exists(), altro)
+
+    def test_ricordo_scritto_all_avvio_e_dall_installatore(self):
+        self.assertIn("config.ricorda_cartella()", (QUI.parent / "app.py").read_text(encoding="utf-8"))
+        installatore = (QUI.parent / "Installa.command").read_text(encoding="utf-8")
+        self.assertIn("Application Support/Messa Parrocchia/cartella.txt", installatore)
+        self.assertIn('"$PWD"', installatore)
 
     def test_forma_del_file(self):
         import os

@@ -11,14 +11,20 @@ Regole:
 import math
 import re
 
-MARCA = "\u2063"   # segna internamente le righe in grassetto (ritornelli dei canti)
+MARCA = "\u2063"       # segna internamente le righe in grassetto (ritornelli dei canti)
+MARCA_ORO = "\u2064"   # segna le righe in GIALLO e grassetto, come il ritornello del salmo (es. "Ascoltaci, o Signore")
+MARCHE = (MARCA, MARCA_ORO)
+
+
+def senza_marca(t: str) -> str:
+    return t.lstrip(MARCA + MARCA_ORO)
 
 LARGHEZZA_PT = (13.333 - 1.4) * 72   # larghezza utile del testo
 ALTEZZA_PT = 5.6 * 72                # altezza utile del testo
 
 
 def righe_necessarie(t: str, size: int) -> int:
-    n = len(t.lstrip(MARCA)) * (1.07 if t.startswith(MARCA) else 1.0)
+    n = len(senza_marca(t)) * (1.07 if t.startswith(MARCHE) else 1.0)
     per_riga = max(8, int(LARGHEZZA_PT / (size * 0.53) * 0.93))
     return max(1, math.ceil(n / per_riga))
 
@@ -77,7 +83,7 @@ def blocchi_da_atomi(atomi):
         for bi, li, t in at:
             if blocchi and ultimo and ultimo[0] == bi:
                 if ultimo[1] == li:
-                    blocchi[-1][-1] += " " + t.lstrip(MARCA)
+                    blocchi[-1][-1] += " " + senza_marca(t)
                 else:
                     blocchi[-1].append(t)
             else:
@@ -104,9 +110,9 @@ def impagina(blocchi, size, verso):
     atomi = []
     for bi, b in enumerate(blocchi):
         for li, riga in enumerate(b):
-            marcata = riga.startswith(MARCA)
-            for f in frammenti(riga.lstrip(MARCA), size, verso):
-                atomi.append([(bi, li, (MARCA if marcata else "") + f)])
+            prefisso = riga[:1] if riga.startswith(MARCHE) else ""
+            for f in frammenti(senza_marca(riga), size, verso):
+                atomi.append([(bi, li, prefisso + f)])
     if not atomi:
         return []
 
